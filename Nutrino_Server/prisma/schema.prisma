@@ -1,0 +1,335 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== ENUMS =====
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHTLY_ACTIVE
+  MODERATELY_ACTIVE
+  VERY_ACTIVE
+  EXTREMELY_ACTIVE
+}
+
+enum SleepQuality {
+  POOR
+  FAIR
+  GOOD
+  EXCELLENT
+}
+
+enum Frequency {
+  DAILY
+  WEEKLY
+  OCCASIONALLY
+  MONTHLY
+  RARELY
+}
+
+// ===== MODELS =====
+
+// Add this enum for conversation types
+enum ConversationType {
+  GENERAL_HEALTH
+  NUTRITION_FACTS
+  MEAL_PLANNING
+  EXERCISE_ADVICE
+  MEDICAL_QUERY
+}
+
+// Add this model to your existing schema.prisma file
+model HealthConversation {
+  id               Int              @id @default(autoincrement())
+  userId           Int
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Conversation content
+  userMessage      String           @db.Text
+  aiResponse       String           @db.Text // JSON string containing the AI response
+  
+  // Metadata
+  usedWebSearch    Boolean          @default(false)
+  sources          String?          @db.Text // JSON string containing sources if web search was used
+  isFallback       Boolean          @default(false) // True if this was a fallback response
+  conversationType ConversationType @default(GENERAL_HEALTH)
+  
+  // Timestamps
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@index([conversationType])
+}
+
+// Update your User model to include the health conversations relation
+// Add this to your existing User model:
+model User {
+  id      Int    @id @default(autoincrement())
+  name    String
+  email   String @unique
+  clerkId String @unique
+
+  healthProfile      HealthProfile?
+  badHabits          BadHabit[]
+  sleepPatterns      SleepPattern[]
+  stressFactors      StressSource[]
+  mentalHealth       MentalHealth?
+  healthReport       HealthReport?
+  mealPlan           MealPlan?
+  healthConversations HealthConversation[] // Add this line
+}
+model HealthProfile {
+  id                 Int            @id @default(autoincrement())
+  userId             Int            @unique
+  user               User           @relation(fields: [userId], references: [id])
+  age                Int?
+  gender             Gender?
+  height             Float? // in cm
+  weight             Float? // in kg
+  activityLevel      ActivityLevel?
+  medicalConditions  String[]
+  allergies          String[]
+  dietaryPreferences String[]
+  foodAllergies      String[]
+  mealFrequency      String?
+  waterIntake        Float? // in liters/day
+
+  pregnancyStatus Boolean?
+  breastfeeding   Boolean?
+  recentSurgery   Boolean?
+  chronicPain     Boolean?
+  digestiveIssues String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BadHabit {
+  id                  Int       @id @default(autoincrement())
+  userId              Int
+  user                User      @relation(fields: [userId], references: [id])
+  habitType           String
+  specificHabit       String
+  frequency           Frequency
+  quantityPerOccasion Float?
+  unit                String?
+  duration            Int? // months
+  lastOccurrence      DateTime?
+  triggerFactors      String[]
+  attemptedQuitting   Boolean   @default(false)
+  quittingMethods     String[]
+  impactSelfRating    Int? // 1-10
+  notes               String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model SleepPattern {
+  id                  Int           @id @default(autoincrement())
+  userId              Int           @unique
+  user                User          @relation(fields: [userId], references: [id])
+  averageHours        Float?
+  sleepQuality        SleepQuality?
+  bedTime             String?
+  wakeTime            String?
+  sleepIssues         String[]
+  useSleepAids        Boolean       @default(false)
+  sleepAidTypes       String[]
+  screenTimeBeforeBed Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model StressSource {
+  id               Int       @id @default(autoincrement())
+  userId           Int
+  user             User      @relation(fields: [userId], references: [id])
+  stressType       String
+  stressLevel      Int // 1-10
+  copingMechanisms String[]
+  stressFrequency  Frequency
+  physicalSymptoms String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model MentalHealth {
+  id              Int       @id @default(autoincrement())
+  userId          Int       @unique
+  user            User      @relation(fields: [userId], references: [id])
+  moodPatterns    String[]
+  diagnosedIssues String[]
+  therapyHistory  String?
+  medication      String[]
+  lastEvaluation  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Add this model to your existing schema.prisma file
+
+model HealthReport {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id])
+
+  // Health Assessment Summary
+  strengths           String[]
+  areasForImprovement String[]
+
+  // Health Recommendations
+  smokingCessation       Json? // For smoking-related recommendations
+  hypertensionManagement Json? // For hypertension management recommendations
+  asthmaManagement       Json? // For asthma management recommendations
+  stressManagement       Json? // For stress management recommendations
+  digestiveHealth        Json? // For digestive health recommendations
+  sleepRecommendations   Json? // For sleep-related recommendations
+
+  // Risk Analysis
+  healthRisks Json[] // Array of health risks with descriptions
+
+  // Medical Condition Management
+  medicalAdvice Json[] // Array of medical conditions with advice
+
+  // Lifestyle Modifications
+  lifestyleModifications Json[] // Array of lifestyle modification recommendations
+
+  // Original report text (for reference)
+  originalReportText String // The full text report from Gemini
+
+  // Metadata
+  generatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Add these models to your existing schema.prisma file
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+model MealPlan {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id])
+
+  // Meal plan metadata
+  startDate     DateTime
+  endDate       DateTime
+  calorieTarget Int?
+  proteinTarget Int? // in grams
+  carbTarget    Int? // in grams
+  fatTarget     Int? // in grams
+
+  // Nutritional goals based on health profile
+  nutritionalGoals Json[] // Array of nutritional goals
+
+  // Dietary restrictions
+  restrictions String[]
+
+  // Daily meal plans
+  dailyPlans DailyMealPlan[]
+
+  // Generated AI recommendations
+  aiRecommendations Json // General recommendations for the meal plan
+
+  // Original meal plan text (for reference)
+  originalPlanText String // The full text plan from Gemini
+
+  // Metadata
+  generatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model DailyMealPlan {
+  id         Int      @id @default(autoincrement())
+  mealPlanId Int
+  mealPlan   MealPlan @relation(fields: [mealPlanId], references: [id], onDelete: Cascade)
+
+  day     Int // Day number in the plan (1, 2, 3, etc.)
+  dayName String? // Optional name (e.g., "Monday")
+
+  // Daily nutritional totals
+  totalCalories Int?
+  totalProtein  Int? // in grams
+  totalCarbs    Int? // in grams
+  totalFat      Int? // in grams
+
+  // Meals for the day
+  meals Meal[]
+
+  // Hydration recommendation
+  waterIntake Int? // in milliliters
+
+  // Additional notes
+  notes String?
+
+  @@unique([mealPlanId, day])
+  @@index([mealPlanId])
+}
+
+model Meal {
+  id          Int           @id @default(autoincrement())
+  dailyPlanId Int
+  dailyPlan   DailyMealPlan @relation(fields: [dailyPlanId], references: [id], onDelete: Cascade)
+
+  mealType    MealType
+  name        String
+  description String?
+
+  // Nutritional information
+  calories Int?
+  protein  Int? // in grams
+  carbs    Int? // in grams
+  fat      Int? // in grams
+
+  // Recipe details
+  ingredients      String[]
+  preparationSteps String[]
+  preparationTime  Int? // in minutes
+
+  // Health benefits
+  healthBenefits String[]
+
+  // Image URL (if any)
+  imageUrl String?
+
+  @@index([dailyPlanId])
+}
+
+// Update the User model to include the relation
+// Add this to your existing User model
+// model User {
+//   ...existing fields
+//   mealPlan       MealPlan?
+// }
