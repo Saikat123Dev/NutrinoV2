@@ -13,6 +13,10 @@ const API_SECRET = '5cb0f4050c4c4f628dd1a6b8fe31bb94';
 
 // Create the client instance
 const fatSecretClient = new FatSecretAPIClient(API_KEY, API_SECRET);
+const sendErrorResponse = (res, status, message, error = null) => {
+  console.error(message, error || '');
+  return res.status(status).json({ message, error: error?.message });
+};
 
 // Function to extract food items from nutrition plan recommendations
 const extractFoodRecommendations = (nutritionTarget) => {
@@ -291,7 +295,7 @@ router.post("/v2/meal/generator", async (req, res) => {
         sleepPatterns: true,
         stressFactors: true,
         mentalHealth: true,
-        HealthReport: true,
+        healthReport: true,
         mealPlan: true,
       },
     });

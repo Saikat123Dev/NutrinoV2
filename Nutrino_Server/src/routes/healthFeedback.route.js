@@ -22,7 +22,7 @@ router.post('/health', async (req, res) => {
         sleepPatterns: true,
         stressFactors: true,
         mentalHealth: true,
-        HealthReport: true, // Include existing health report if any
+        healthReport: true, // Include existing health report if any
       }
     });
 
