@@ -39,6 +39,7 @@ type Message = {
 export default function ChatbotScreen() {
   const { user } = useUser();
   const email = user?.emailAddresses?.[0]?.emailAddress;
+  console.log('User email:', user);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -130,6 +131,7 @@ export default function ChatbotScreen() {
   };
 
   const handleSendMessage = async () => {
+      console.log('Send button pressed'); 
     if (inputText.trim() === '' || !email) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
