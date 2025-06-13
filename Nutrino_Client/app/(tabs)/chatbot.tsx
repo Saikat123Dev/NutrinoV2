@@ -147,7 +147,7 @@ export default function ChatbotScreen() {
     setIsLoading(true);
     
     try {
-      const response = await fetch('https://nutrino-nutrino-server.onrender.com/api/ask', {
+      const response = await fetch('https://nutrinov2.onrender.com/api/ask', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -157,7 +157,10 @@ export default function ChatbotScreen() {
           message: inputText
         })
       });
-
+      if (!response.ok) {
+        console.log('Network response was not ok:', response);
+        throw new Error('Network response was not ok');
+      }
       const data = await response.json();
 
       if (!response.ok) {
