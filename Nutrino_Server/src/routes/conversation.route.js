@@ -1,105 +1,11 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import express from 'express';
 import prisma from "../lib/db.js";
-import { tavily } from "@tavily/core";
 
 const router = express.Router();
 
 // Initialize the Gemini API client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-// Initialize Tavily client
-const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY });
-
-// Helper function to clean and validate search queries
-function cleanSearchQuery(input) {
-  if (typeof input !== 'string') {
-    input = String(input);
-  }
-  // Remove phrases that might cause API errors
-  return input
-    .replace(/please give me|some website about|documentation/g, '')
-    .trim()
-    .substring(0, 100); // Limit to 100 chars
-}
-
-// Helper function to perform web search using Tavily
-async function searchWithTavily(query) {
-  try {
-    const cleanQuery = cleanSearchQuery(query);
-    
-    if (!cleanQuery) {
-      throw new Error("Search query cannot be empty");
-    }
-
-    console.log("Searching with query:", cleanQuery);
-
-    const response = await tavilyClient.search({
-      query: cleanQuery,
-      search_depth: "basic",
-      include_images: false,
-      include_answer: true,
-      max_results: 3,
-      include_domains: [
-        "mayoclinic.org",
-        "webmd.com",
-        "healthline.com",
-        "nih.gov",
-        "who.int",
-        "harvard.edu",
-        "nutrition.gov",
-        "usda.gov"
-      ]
-    });
-    
-    return {
-      success: true,
-      answer: response.answer || "No specific answer found, but found relevant information.",
-      sources: (response.results || []).map(result => ({
-        title: result.title || "Untitled",
-        url: result.url || "",
-        content: result.content || result.snippet || ""
-      }))
-    };
-  } catch (error) {
-    console.error("Tavily search error:", {
-      error: error.message,
-      stack: error.stack,
-      query: typeof query === 'string' ? query : JSON.stringify(query),
-      timestamp: new Date().toISOString()
-    });
-    return {
-      success: false,
-      error: error.message || "Web search failed"
-    };
-  }
-}
-
-// Helper function to detect if Gemini response indicates uncertainty or failure
-function isGeminiResponseUncertain(response) {
-  if (typeof response !== 'string') {
-    try {
-      response = JSON.stringify(response);
-    } catch {
-      return true; // If we can't stringify, consider it uncertain
-    }
-  }
-
-  const uncertaintyIndicators = [
-    "i don't know",
-    "i'm not sure",
-    "i cannot provide",
-    "consult a doctor",
-    "see a healthcare professional",
-    "i'm unable to",
-    "insufficient information",
-    "unclear",
-    "uncertain"
-  ];
-  
-  const responseText = response.toLowerCase();
-  return uncertaintyIndicators.some(indicator => responseText.includes(indicator));
-}
 
 // Helper function to generate Gemini response
 async function generateGeminiResponse(message, userProfile) {
@@ -202,38 +108,9 @@ router.post("/ask", async (req, res) => {
       nutritionFocus: user.healthProfile?.nutritionFocus || "Balanced nutrition"
     };
 
-    let jsonResponse;
-    let usedWebSearch = false;
-
     try {
-      // First, try to get response from Gemini
-      jsonResponse = await generateGeminiResponse(message, safeUser);
-
-      // Check if Gemini response indicates uncertainty
-      if (!jsonResponse.success || isGeminiResponseUncertain(jsonResponse.answer)) {
-        console.log("Gemini response uncertain, attempting web search...");
-        
-        // Construct a clean search query
-        const searchQuery = `${cleanSearchQuery(message)} health nutrition research`;
-        console.log("Search query being sent:", searchQuery);
-        
-        const tavilyResult = await searchWithTavily(searchQuery);
-        
-        if (tavilyResult.success && tavilyResult.answer) {
-          usedWebSearch = true;
-          // Enhance the response with web search results
-          jsonResponse = {
-            ...jsonResponse,
-            answer: tavilyResult.answer,
-            explanation: `Based on current health and nutrition research: ${tavilyResult.answer}${jsonResponse.explanation ? '. ' + jsonResponse.explanation : ''}`,
-            sources: tavilyResult.sources || [],
-            webSearchUsed: true,
-            note: "This information was enhanced with current research from trusted health sources."
-          };
-        } else {
-          console.log("Web search failed or returned no results:", tavilyResult.error);
-        }
-      }
+      // Get response from Gemini
+      const jsonResponse = await generateGeminiResponse(message, safeUser);
 
       // Save the conversation to the database
       const savedConversation = await prisma.healthConversation.create({
@@ -241,60 +118,20 @@ router.post("/ask", async (req, res) => {
           userId: user.id,
           userMessage: message,
           aiResponse: JSON.stringify(jsonResponse),
-          usedWebSearch: usedWebSearch,
-          sources: jsonResponse.sources ? JSON.stringify(jsonResponse.sources) : null
+          usedWebSearch: false
         }
       });
 
       // Add metadata to the response
       jsonResponse.conversationId = savedConversation.id;
-      jsonResponse.webSearchUsed = usedWebSearch;
+      jsonResponse.webSearchUsed = false;
 
       // Return the response
       res.json(jsonResponse);
 
     } catch (error) {
       console.error("Error generating response:", error);
-
-      // Fallback: try web search if Gemini completely fails
-      try {
-        const searchQuery = `${cleanSearchQuery(message)} health nutrition advice`;
-        console.log("Fallback search query:", searchQuery);
-        
-        const tavilyResult = await searchWithTavily(searchQuery);
-        
-        if (tavilyResult.success) {
-          const fallbackResponse = {
-            success: true,
-            answer: tavilyResult.answer || "I found some information, but please consult with a healthcare professional for personalized advice.",
-            explanation: "This information is based on current research from trusted health sources.",
-            feedback: "Great question! It's always good to seek evidence-based health information.",
-            followUp: "Would you like more specific information about any aspect of this topic?",
-            safety: "Please consult with a healthcare professional for personalized medical advice.",
-            sources: tavilyResult.sources || [],
-            webSearchUsed: true,
-            fallbackUsed: true
-          };
-
-          // Save the fallback response
-          const savedConversation = await prisma.healthConversation.create({
-            data: {
-              userId: user.id,
-              userMessage: message,
-              aiResponse: JSON.stringify(fallbackResponse),
-              usedWebSearch: true,
-              sources: JSON.stringify(fallbackResponse.sources),
-              isFallback: true
-            }
-          });
-
-          fallbackResponse.conversationId = savedConversation.id;
-          return res.json(fallbackResponse);
-        }
-      } catch (searchError) {
-        console.error("Web search also failed:", searchError);
-      }
-
+      
       // Final fallback response
       res.status(500).json({
         success: false,
@@ -311,8 +148,6 @@ router.post("/ask", async (req, res) => {
     });
   }
 });
-
-
 
 // Get conversation history for a user
 router.get("/conversations/:email", async (req, res) => {
@@ -503,34 +338,13 @@ router.put("/conversations/:id", async (req, res) => {
       try {
         // Generate new response
         const geminiResponse = await generateGeminiResponse(conversation.userMessage, safeUser);
-        let finalResponse = geminiResponse;
-        let usedWebSearch = false;
-
-        // Check if Gemini response is uncertain and use Tavily if needed
-        if (isGeminiResponseUncertain(geminiResponse.answer)) {
-          console.log("Gemini response uncertain, trying web search...");
-          const searchQuery = `${conversation.userMessage.substring(0, 80)} health nutrition`.trim();
-          const tavilyResult = await searchWithTavily(searchQuery);
-          
-          if (tavilyResult.success && tavilyResult.answer) {
-            usedWebSearch = true;
-            finalResponse = {
-              ...geminiResponse,
-              answer: tavilyResult.answer || geminiResponse.answer,
-              explanation: `Based on current health and nutrition research: ${tavilyResult.answer}${geminiResponse.explanation ? '. ' + geminiResponse.explanation : ''}`,
-              sources: tavilyResult.sources || [],
-              webSearchUsed: true
-            };
-          }
-        }
 
         // Update the conversation with the new response
         const updatedConversation = await prisma.healthConversation.update({
           where: { id: parseInt(id) },
           data: {
-            aiResponse: JSON.stringify(finalResponse),
-            usedWebSearch: usedWebSearch,
-            sources: finalResponse.sources ? JSON.stringify(finalResponse.sources) : null,
+            aiResponse: JSON.stringify(geminiResponse),
+            usedWebSearch: false,
             updatedAt: new Date()
           }
         });
@@ -539,9 +353,9 @@ router.put("/conversations/:id", async (req, res) => {
           success: true,
           message: "Conversation updated successfully",
           data: {
-            ...finalResponse,
+            ...geminiResponse,
             conversationId: parseInt(id),
-            webSearchUsed: usedWebSearch
+            webSearchUsed: false
           }
         });
       } catch (llmError) {
@@ -596,45 +410,41 @@ router.post("/nutrition-facts", async (req, res) => {
       });
     }
 
-    // Search for detailed nutrition information
-    const searchQuery = `${foodQuery.substring(0, 50)} nutrition facts calories protein`.trim();
-    console.log("Nutrition search query:", searchQuery);
-    
-    const nutritionData = await searchWithTavily(searchQuery);
+    // Create a basic user profile for the prompt
+    const safeUser = {
+      name: "User",
+      age: "Not specified",
+      gender: "Not specified",
+      healthGoals: "General wellness",
+      dietaryRestrictions: "None",
+      allergies: "None",
+      medicalConditions: "None",
+      activityLevel: "MODERATELY_ACTIVE",
+      preferredCuisine: "Various",
+      nutritionFocus: "Nutrition facts"
+    };
 
-    if (nutritionData.success) {
-      // Save the nutrition query as a conversation
-      const savedConversation = await prisma.healthConversation.create({
-        data: {
-          userId: user.id,
-          userMessage: `Nutrition facts for: ${foodQuery}`,
-          aiResponse: JSON.stringify({
-            success: true,
-            foodItem: foodQuery,
-            nutritionInfo: nutritionData.answer,
-            sources: nutritionData.sources,
-            note: "Nutrition information from trusted sources. Values may vary based on preparation and serving size."
-          }),
-          usedWebSearch: true,
-          sources: JSON.stringify(nutritionData.sources),
-          conversationType: 'NUTRITION_FACTS'
-        }
-      });
+    // Generate response from Gemini
+    const nutritionResponse = await generateGeminiResponse(
+      `Provide detailed nutrition facts for: ${foodQuery}`,
+      safeUser
+    );
 
-      return res.json({
-        success: true,
-        foodItem: foodQuery,
-        nutritionInfo: nutritionData.answer,
-        sources: nutritionData.sources,
-        conversationId: savedConversation.id,
-        note: "Nutrition information from trusted sources. Values may vary based on preparation and serving size."
-      });
-    } else {
-      return res.status(500).json({
-        success: false,
-        error: "Unable to fetch nutrition information at this time"
-      });
-    }
+    // Save the nutrition query as a conversation
+    const savedConversation = await prisma.healthConversation.create({
+      data: {
+        userId: user.id,
+        userMessage: `Nutrition facts for: ${foodQuery}`,
+        aiResponse: JSON.stringify(nutritionResponse),
+        usedWebSearch: false,
+        conversationType: 'NUTRITION_FACTS'
+      }
+    });
+
+    return res.json({
+      ...nutritionResponse,
+      conversationId: savedConversation.id
+    });
   } catch (error) {
     console.error("Error fetching nutrition facts:", error);
     res.status(500).json({

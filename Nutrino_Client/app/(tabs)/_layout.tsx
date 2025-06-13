@@ -2,7 +2,7 @@ import { Tabs } from "expo-router";
 import React, { useRef } from "react";
 import { Animated, NativeScrollEvent, NativeSyntheticEvent, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ScrollContext } from "./ScrollContext"; // Import from the separate file
+// import { ScrollContext } from "./ScrollContext"; // Import from the separate file
 
 // Custom dimensions
 const TAB_BAR_WIDTH = "98%";
@@ -76,10 +76,7 @@ export default function TabLayout() {
   };
 
   return (
-    <ScrollContext.Provider value={{
-      handleScroll,
-      tabBarHeight: 0
-    }}>
+   
       <View style={styles.container}>
         <Tabs
           screenOptions={{
@@ -101,7 +98,7 @@ export default function TabLayout() {
           ))}
         </Tabs>
       </View>
-    </ScrollContext.Provider>
+  
   );
 }
 

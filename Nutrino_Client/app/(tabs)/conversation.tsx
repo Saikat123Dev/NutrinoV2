@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ScrollContext } from './ScrollContext';
+import { useUser } from '@clerk/clerk-expo';
 
 // Add your Gemini API key here
 const GEMINI_API_KEY = "AIzaSyDpgRM_SDRjbh-vliR6SnHCVmtzfgevbQs"; // Replace with your actual Gemini API key

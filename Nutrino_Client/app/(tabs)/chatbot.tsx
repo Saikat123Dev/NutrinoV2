@@ -16,10 +16,13 @@ import {
   TextInput, 
   View,
   TouchableOpacity,
-  StatusBar
+  StatusBar,
+  Alert,
+  Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
+import { useUser } from '@clerk/clerk-expo';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,9 +31,14 @@ type Message = {
   text: string;
   sender: 'user' | 'bot';
   timestamp: Date;
+  sources?: any[];
+  followUp?: string;
+  explanation?: string;
 };
 
 export default function ChatbotScreen() {
+  const { user } = useUser();
+  const email = user?.emailAddresses?.[0]?.emailAddress;
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -121,8 +129,8 @@ export default function ChatbotScreen() {
     ).start();
   };
 
-  const handleSendMessage = () => {
-    if (inputText.trim() === '') return;
+  const handleSendMessage = async () => {
+    if (inputText.trim() === '' || !email) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
@@ -138,28 +146,63 @@ export default function ChatbotScreen() {
     setInputText('');
     setIsLoading(true);
     
-    // Simulate bot response after a delay
-    setTimeout(() => {
-      const botResponses = [
-        "I understand your concern about nutrition. Let me provide some helpful information.",
-        "That's a great question! Based on your profile, I'd recommend...",
-        "I can help with that. Here are some dietary suggestions tailored for you:",
-        "Your health is important! Let me analyze that and give you personalized advice.",
-        "Thanks for sharing. Here's what I think would work best for your situation."
-      ];
-      
-      const randomResponse = botResponses[Math.floor(Math.random() * botResponses.length)];
-      
-      const newBotMessage: Message = {
+    try {
+      const response = await fetch('https://nutrino-nutrino-server.onrender.com/api/ask', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          message: inputText
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get response from server');
+      }
+
+      const botMessage: Message = {
         id: Date.now().toString(),
-        text: randomResponse,
+        text: data.answer,
         sender: 'bot',
         timestamp: new Date(),
+        sources: data.sources,
+        followUp: data.followUp,
+        explanation: data.explanation
       };
+
+      setMessages(prev => [...prev, botMessage]);
       
-      setMessages(prev => [...prev, newBotMessage]);
+      // If there's a follow-up question, add it after a delay
+      if (data.followUp) {
+        setTimeout(() => {
+          const followUpMessage: Message = {
+            id: Date.now().toString(),
+            text: data.followUp,
+            sender: 'bot',
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, followUpMessage]);
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+      
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        text: 'Sorry, I encountered an error. Please try again.',
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const formatTime = (date: Date) => {
@@ -200,6 +243,38 @@ export default function ChatbotScreen() {
     if (scrollViewRef.current) {
       scrollViewRef.current.scrollToEnd({ animated: true });
     }
+  };
+
+  const showSources = (sources: any[]) => {
+    if (!sources || sources.length === 0) return null;
+    
+    return (
+      <View style={styles.sourcesContainer}>
+        <Text style={styles.sourcesTitle}>Sources:</Text>
+        {sources.map((source, index) => (
+          <TouchableOpacity 
+            key={index} 
+            style={styles.sourceItem}
+            onPress={() => Linking.openURL(source.url)}
+          >
+            <Text style={styles.sourceText} numberOfLines={1}>
+              {source.title || 'Untitled source'}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
+  const showExplanation = (explanation: string) => {
+    if (!explanation) return null;
+    
+    return (
+      <View style={styles.explanationContainer}>
+        <Text style={styles.explanationTitle}>More Details:</Text>
+        <Text style={styles.explanationText}>{explanation}</Text>
+      </View>
+    );
   };
 
   return (
@@ -320,6 +395,8 @@ export default function ChatbotScreen() {
                     end={{ x: 1, y: 1 }}
                   >
                     <Text style={styles.messageText}>{message.text}</Text>
+                    {message.sender === 'bot' && showExplanation(message.explanation)}
+                    {message.sender === 'bot' && showSources(message.sources)}
                     <View style={styles.messageFooter}>
                       <Text style={styles.messageTime}>
                         {formatTime(message.timestamp)}
@@ -722,6 +799,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#DCDDDE',
     flex: 1,
+    lineHeight: 20,
+  },
+  sourcesContainer: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  sourcesTitle: {
+    fontSize: 12,
+    color: '#B0BEC5',
+    marginBottom: 5,
+    fontWeight: 'bold',
+  },
+  sourceItem: {
+    paddingVertical: 5,
+  },
+  sourceText: {
+    fontSize: 12,
+    color: '#64B5F6',
+    textDecorationLine: 'underline',
+  },
+  explanationContainer: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  explanationTitle: {
+    fontSize: 12,
+    color: '#B0BEC5',
+    marginBottom: 5,
+    fontWeight: 'bold',
+  },
+  explanationText: {
+    fontSize: 14,
+    color: '#EEEEEE',
     lineHeight: 20,
   },
 });
