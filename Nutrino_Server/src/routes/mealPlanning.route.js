@@ -52,7 +52,7 @@ router.post('/mealplan/generate', async (req, res) => {
         sleepPatterns: true,
         stressFactors: true,
         mentalHealth: true,
-        HealthReport: true,
+        healthReport: true,
         mealPlan: true,
       },
     });
