@@ -31,28 +31,28 @@ router.post('/health', async (req, res) => {
     }
 
     // Check if there's a recent report (less than 7 days old)
-    const hasRecentReport = userDetails.HealthReport &&
-      (new Date() - new Date(userDetails.HealthReport.generatedAt)) / (1000 * 60 * 60 * 24) < 7;
+    const hasRecentReport = userDetails.healthReport &&
+      (new Date() - new Date(userDetails.healthReport.generatedAt)) / (1000 * 60 * 60 * 24) < 7;
 
-    // If there's a recent report, return it
+    // If there's a recent reporh, return it
     if (hasRecentReport) {
       return res.status(200).json({
         message: "Retrieved existing health report",
         data: {
           userDetails: userDetails,
-          healthReport: userDetails.HealthReport.originalReportText,
+          healthReport: userDetails.healthReport.originalReportText,
           structuredReport: {
-            strengths: userDetails.HealthReport.strengths,
-            areasForImprovement: userDetails.HealthReport.areasForImprovement,
-            smokingCessation: userDetails.HealthReport.smokingCessation,
-            hypertensionManagement: userDetails.HealthReport.hypertensionManagement,
-            asthmaManagement: userDetails.HealthReport.asthmaManagement,
-            stressManagement: userDetails.HealthReport.stressManagement,
-            digestiveHealth: userDetails.HealthReport.digestiveHealth,
-            sleepRecommendations: userDetails.HealthReport.sleepRecommendations,
-            healthRisks: userDetails.HealthReport.healthRisks,
-            medicalAdvice: userDetails.HealthReport.medicalAdvice,
-            lifestyleModifications: userDetails.HealthReport.lifestyleModifications
+            strengths: userDetails.healthReport.strengths,
+            areasForImprovement: userDetails.healthReport.areasForImprovement,
+            smokingCessation: userDetails.healthReport.smokingCessation,
+            hypertensionManagement: userDetails.healthReport.hypertensionManagement,
+            asthmaManagement: userDetails.healthReport.asthmaManagement,
+            stressManagement: userDetails.healthReport.stressManagement,
+            digestiveHealth: userDetails.healthReport.digestiveHealth,
+            sleepRecommendations: userDetails.healthReport.sleepRecommendations,
+            healthRisks: userDetails.healthReport.healthRisks,
+            medicalAdvice: userDetails.healthReport.medicalAdvice,
+            lifestyleModifications: userDetails.healthReport.lifestyleModifications
           }
         }
       });
