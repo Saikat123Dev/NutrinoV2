@@ -1,28 +1,28 @@
-import { MaterialCommunityIcons, MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { useUser } from '@clerk/clerk-expo';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useState, useRef, useEffect } from 'react';
-import { 
-  Animated, 
-  Dimensions, 
-  Easing, 
-  KeyboardAvoidingView, 
-  Platform, 
-  Pressable, 
-  ScrollView, 
-  StyleSheet, 
-  Text, 
-  TextInput, 
-  View,
-  TouchableOpacity,
-  StatusBar,
+import { useEffect, useRef, useState } from 'react';
+import {
   Alert,
-  Linking
+  Animated,
+  Dimensions,
+  Easing,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
-import { useUser } from '@clerk/clerk-expo';
 
 const { width, height } = Dimensions.get('window');
 
@@ -39,7 +39,7 @@ type Message = {
 export default function ChatbotScreen() {
   const { user } = useUser();
   const email = user?.emailAddresses?.[0]?.emailAddress;
-  console.log('User email:', user);
+  console.log('User email:', user?.id);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',

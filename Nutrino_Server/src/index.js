@@ -24,33 +24,33 @@ app.use((req, res, next) => {
 });
 const PORT = process.env.PORT || 3000;
 
-app.use("/api/v1/auth",webhookUserCreateRoutes)
-app.use("/api/v1/healthstatus",healthProfileRoutes)
-app.use("/api/v1/feedback",healthFeedback)
-app.use("/api/v1/user",mealPlanning)
-app.use("/api",conversation)
-app.use("/api/exercise",exercise)
-app.use("/api",meal)
+app.use("/api/v1/auth", webhookUserCreateRoutes)
+app.use("/api/v1/healthstatus", healthProfileRoutes)
+app.use("/api/v1/feedback", healthFeedback)
+app.use("/api/v1/user", mealPlanning)
+app.use("/api", conversation)
+app.use("/api/exercise", exercise)
+app.use("/api", meal)
 
 
-const server = app.listen(PORT, () => {
-    console.log(`Server started on port ${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server started on port ${PORT}`);
 });
 
 
 const gracefulShutdown = () => {
-    console.log('Shutting down gracefully...');
+  console.log('Shutting down gracefully...');
 
 
-    server.close((err) => {
-        if (err) {
-            console.error('Error while shutting down the server:', err);
-            process.exit(1);
-        }
+  server.close((err) => {
+    if (err) {
+      console.error('Error while shutting down the server:', err);
+      process.exit(1);
+    }
 
-        console.log('Server closed successfully.');
-        process.exit(0);
-    });
+    console.log('Server closed successfully.');
+    process.exit(0);
+  });
 };
 
 
@@ -58,11 +58,11 @@ process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
 process.on('uncaughtException', (err) => {
-    console.error('There was an uncaught exception:', err);
-    process.exit(1);
+  console.error('There was an uncaught exception:', err);
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Promise Rejection:', reason, promise);
-    process.exit(1);
+  console.error('Unhandled Promise Rejection:', reason, promise);
+  process.exit(1);
 });

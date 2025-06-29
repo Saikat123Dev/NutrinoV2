@@ -32,30 +32,31 @@ const SocialLoginButton = ({
   const router = useRouter();
 
   // Check if profile is complete
-//   const isProfileComplete = (userData: any) => {
-//     return !!(
-//       userData &&
-//       userData.englishLevel &&
-//       userData.learningGoal &&
-//       userData.interests &&
-//       userData.focus &&
-//       userData.voice &&
-//       userData.motherToung
-//     );
-//   };
+  //   const isProfileComplete = (userData: any) => {
+  //     return !!(
+  //       userData &&
+  //       userData.englishLevel &&
+  //       userData.learningGoal &&
+  //       userData.interests &&
+  //       userData.focus &&
+  //       userData.voice &&
+  //       userData.motherToung
+  //     );
+  //   };
 
   // Effect to handle navigation after user data is loaded
   useEffect(() => {
     if (isLoaded && isSignedIn) {
       console.log("User is signed in, navigating...");
 
+
       // Always navigate to complete-your-profile after login
-    //  router.push("/auth/complete-your-account");
+      //  router.push("/auth/complete-your-account");
 
       // Uncomment this if you want to conditionally navigate based on profile completion
-      
-    
-      
+
+
+
     }
   }, [isLoaded, isSignedIn, user, router]);
 

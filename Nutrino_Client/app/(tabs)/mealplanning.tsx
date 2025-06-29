@@ -1,3 +1,5 @@
+import axios from '@/configs/axios-config';
+import { useUser } from '@clerk/clerk-expo';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,6 +12,11 @@ const { width, height } = Dimensions.get('window');
 const nodeCount = 8;
 
 export default function MealPlanningScreen() {
+  // get the current user
+  const { user } = useUser();
+  const clerkId: string = user?.id as string;
+  console.log(clerkId);
+
   const [nodePositions, setNodePositions] = useState([]);
   const nodeAnimations = useRef(Array(nodeCount).fill().map(() => ({
     opacity: new Animated.Value(0),
@@ -81,6 +88,54 @@ export default function MealPlanningScreen() {
       anim.scale.stopAnimation();
       anim.position.stopAnimation();
     });
+  }, []);
+
+  // Option actions
+  // generate meal plan
+  const [loading, setLoading] = useState<boolean>(false);
+  const generateMealPlan = async () => {
+    if (!clerkId) return;
+    try {
+      setLoading(true);
+      await axios.post('/v1/user/mealplan/generate',
+        { clerkId }
+      )
+        .then(res => {
+          const resdata = res.data.data
+          console.log(resdata);
+        })
+    } catch (error) {
+      console.error("Failed generating: ", error);
+
+    }
+    setLoading(false);
+  }
+  // quick action maps
+  const quickActionMap: Record<string, () => void> = {
+    generate: generateMealPlan
+  }
+
+  // get curremt meal plan
+  const [mealPlan, setMealPlan] = useState<Record<string, any> | null>(null);
+  const getTodaysMealPlan = async () => {
+    try {
+      await axios.post('/v1/user/mealplan', { clerkId })
+        .then(res => {
+          const data = res.data.data;
+          console.log(data);
+
+          setMealPlan(data)
+        })
+    } catch (error) {
+      console.log(error.response);
+
+    }
+  }
+
+  useEffect(() => {
+    console.log("getting todays meal plan");
+
+    getTodaysMealPlan();
   }, []);
 
   const mealCategories = [
@@ -159,9 +214,12 @@ export default function MealPlanningScreen() {
     // Navigate to specific meal category
   };
 
-  const handleActionPress = (action) => {
+  const handleActionPress = (action: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     // Handle quick actions
+    if (quickActionMap[action]) {
+      quickActionMap[action]();
+    }
   };
 
   const handleBackPress = () => {
@@ -223,10 +281,10 @@ export default function MealPlanningScreen() {
                   colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
                   style={styles.quickActionGradient}
                 >
-                  <MaterialCommunityIcons 
-                    name={action.icon} 
-                    size={24} 
-                    color={action.color} 
+                  <MaterialCommunityIcons
+                    name={action.icon}
+                    size={24}
+                    color={action.color}
                   />
                   <Text style={styles.quickActionText}>{action.title}</Text>
                 </LinearGradient>
@@ -251,7 +309,7 @@ export default function MealPlanningScreen() {
                   colors={[...meal.gradientColors, '#121212']}
                   style={[
                     styles.mealGradient,
-                    { 
+                    {
                       shadowColor: meal.glowColor,
                       shadowOpacity: 0.3,
                       shadowOffset: { width: 0, height: 0 },
@@ -263,10 +321,10 @@ export default function MealPlanningScreen() {
                   end={{ x: 1, y: 1 }}
                 >
                   <View style={[styles.mealIconContainer, { backgroundColor: `${meal.color}20` }]}>
-                    <MaterialCommunityIcons 
-                      name={meal.icon} 
-                      size={32} 
-                      color={meal.color} 
+                    <MaterialCommunityIcons
+                      name={meal.icon}
+                      size={32}
+                      color={meal.color}
                     />
                   </View>
                   <Text style={styles.mealTitle}>{meal.title}</Text>
@@ -311,19 +369,19 @@ export default function MealPlanningScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#0D1421' 
+  container: {
+    flex: 1,
+    backgroundColor: '#0D1421'
   },
-  backgroundContainer: { 
-    position: 'absolute', 
-    width: 400, 
-    height :785,
+  backgroundContainer: {
+    position: 'absolute',
+    width: 400,
+    height: 785,
   },
-  backgroundGradient: { 
-    flex: 1 
+  backgroundGradient: {
+    flex: 1
   },
-  scrollViewContent: { 
+  scrollViewContent: {
     padding: 20,
     paddingBottom: 40
   },
@@ -340,9 +398,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.1)'
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
     color: '#FFB74D',
     marginBottom: 5,
     textAlign: 'center',
