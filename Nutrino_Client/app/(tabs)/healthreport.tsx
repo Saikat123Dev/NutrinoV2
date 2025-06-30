@@ -1,24 +1,28 @@
+import axiosInsatance from '@/configs/axios-config';
+import { useUser } from '@clerk/clerk-expo';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useIsFocused } from '@react-navigation/native';
+import axios from 'axios';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 const nodeCount = 8;
 
 export default function HealthReportScreen() {
-  const [nodePositions, setNodePositions] = useState([]);
-  const nodeAnimations = useRef(Array(nodeCount).fill().map(() => ({
+  const [nodePositions, setNodePositions] = useState<Array<Record<string, any>>>([]);
+  const nodeAnimations = useRef(Array(nodeCount).fill(undefined).map(() => ({
     opacity: new Animated.Value(0),
     scale: new Animated.Value(0.5),
     position: new Animated.ValueXY()
   }))).current;
 
   useEffect(() => {
-    const initialNodePositions = Array(nodeCount).fill().map(() => {
+    const initialNodePositions = Array(nodeCount).fill(undefined).map(() => {
       const centerX = width / 2;
       const centerY = height / 2;
       const radius = Math.min(width, height) * 0.25;
@@ -34,7 +38,7 @@ export default function HealthReportScreen() {
         color: `rgba(79, 195, 247, ${Math.random() * 0.3 + 0.2})`
       };
     });
-    setNodePositions(initialNodePositions);
+    setNodePositions(initialNodePositions as any);
 
     nodeAnimations.forEach((anim, index) => {
       const { x, y, delay, duration } = initialNodePositions[index];
@@ -83,75 +87,40 @@ export default function HealthReportScreen() {
     });
   }, []);
 
-  const healthMetrics = [
-    {
-      id: 1,
-      title: 'Heart Rate',
-      value: '72 BPM',
-      icon: 'heart-pulse',
-      color: '#FF6B6B',
-      status: 'Normal',
-      trend: 'up'
-    },
-    {
-      id: 2,
-      title: 'Blood Pressure',
-      value: '120/80',
-      icon: 'water-outline',
-      color: '#4FC3F7',
-      status: 'Optimal',
-      trend: 'stable'
-    },
-    {
-      id: 3,
-      title: 'BMI',
-      value: '22.5',
-      icon: 'scale-bathroom',
-      color: '#00E676',
-      status: 'Healthy',
-      trend: 'down'
-    },
-    {
-      id: 4,
-      title: 'Sleep Quality',
-      value: '7.5h',
-      icon: 'sleep',
-      color: '#BA68C8',
-      status: 'Good',
-      trend: 'up'
-    }
-  ];
-
-  const weeklyData = [
-    { day: 'Mon', steps: 8500, calories: 1650 },
-    { day: 'Tue', steps: 9200, calories: 1720 },
-    { day: 'Wed', steps: 7800, calories: 1580 },
-    { day: 'Thu', steps: 10500, calories: 1890 },
-    { day: 'Fri', steps: 9800, calories: 1750 },
-    { day: 'Sat', steps: 12000, calories: 2100 },
-    { day: 'Sun', steps: 6500, calories: 1450 }
-  ];
-
   const handleBackPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.back();
   };
 
-  const getTrendIcon = (trend) => {
-    switch (trend) {
-      case 'up': return 'trending-up';
-      case 'down': return 'trending-down';
-      default: return 'trending-neutral';
-    }
-  };
+  const { user } = useUser();
+  const clerkId = user?.id;
+  const isFocused = useIsFocused();
 
-  const getTrendColor = (trend) => {
-    switch (trend) {
-      case 'up': return '#00E676';
-      case 'down': return '#FF6B6B';
-      default: return '#FFB74D';
-    }
-  };
+  // fetch or generate health report
+  const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  useEffect(() => {
+    const fetchHealthReport = async () => {
+      if (!clerkId) return;
+      try {
+        setLoading(true);
+        await axiosInsatance.post('/v1/feedback/health', { clerkId })
+          .then(res => {
+            const report = res.data.data;
+            setHealthReport(report?.structuredReport);
+          })
+      } catch (error) {
+        if (axios.isAxiosError?.(error)) {
+          console.error("Report error: ", error.response);
+        }
+      };
+      setLoading(false);
+    };
+
+    fetchHealthReport();
+  }, [clerkId]);
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -181,7 +150,6 @@ export default function HealthReportScreen() {
           />
         ))}
       </View>
-
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
         <View style={styles.headerContainer}>
           <Pressable style={styles.backButton} onPress={handleBackPress}>
@@ -190,111 +158,225 @@ export default function HealthReportScreen() {
           <Text style={styles.title}>Health Report</Text>
           <Text style={styles.subtitle}>Track your wellness journey</Text>
         </View>
+        {healthReport && (
+          <View style={{ marginBottom: 30 }}>
+            <Section
+              title="Strengths"
+              items={healthReport.strengths}
+              icon={<MaterialCommunityIcons name="thumb-up-outline" size={20} color="#00E676" />}
+            />
+            <Section
+              title="Areas for Improvement"
+              items={healthReport.areasForImprovement}
+              icon={<MaterialCommunityIcons name="alert-outline" size={20} color="#FFB300" />}
+            />
+            <ObjectSection
+              title="Stress Management"
+              obj={healthReport.stressManagement}
+              icon={<MaterialCommunityIcons name="meditation" size={20} color="#4FC3F7" />}
+            />
+            <ObjectSection
+              title="Digestive Health"
+              obj={healthReport.digestiveHealth}
+              icon={<MaterialCommunityIcons name="food-apple-outline" size={20} color="#FF7043" />}
+            />
+            <ObjectSection
+              title="Sleep Recommendations"
+              obj={healthReport.sleepRecommendations}
+              icon={<MaterialCommunityIcons name="sleep" size={20} color="#9575CD" />}
+            />
+            <HealthRisks risks={healthReport.healthRisks} />
+            <MedicalAdvice advice={healthReport.medicalAdvice} />
+            <LifestyleModifications mods={healthReport.lifestyleModifications} />
+          </View>
+        )}
 
-        <View style={styles.metricsGrid}>
-          {healthMetrics.map((metric) => (
-            <View key={metric.id} style={styles.metricCard}>
-              <LinearGradient
-                colors={['#1E1E1E', '#2A2A2A', '#1A1A1A']}
-                style={styles.gradientCard}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.metricHeader}>
-                  <View style={[styles.iconContainer, { backgroundColor: `${metric.color}20` }]}>
-                    <MaterialCommunityIcons name={metric.icon} size={28} color={metric.color} />
-                  </View>
-                  <MaterialCommunityIcons 
-                    name={getTrendIcon(metric.trend)} 
-                    size={20} 
-                    color={getTrendColor(metric.trend)} 
-                  />
-                </View>
-                <Text style={styles.metricValue}>{metric.value}</Text>
-                <Text style={styles.metricTitle}>{metric.title}</Text>
-                <Text style={[styles.metricStatus, { color: metric.color }]}>{metric.status}</Text>
-              </LinearGradient>
-            </View>
-          ))}
-        </View>
+        {healthReport?.insightSummary &&
+          <View style={styles.insightsContainer}>
+            <LinearGradient
+              colors={['#0D2F10', '#173E19']}
+              style={styles.insightsCard}
+            >
+              <MaterialCommunityIcons name="lightbulb-outline" size={24} color="#00E676" />
+              <Text style={styles.insightsTitle}>Health Insights</Text>
+              <Text style={styles.insightsText}>{healthReport?.insightSummary}</Text>
+            </LinearGradient>
+          </View>}
 
-        <View style={styles.chartContainer}>
-          <LinearGradient
-            colors={['#1A237E', '#0D1421']}
-            style={styles.chartCard}
-          >
-            <Text style={styles.chartTitle}>Weekly Activity</Text>
-            <View style={styles.chartWrapper}>
-              {weeklyData.map((data, index) => (
-                <View key={data.day} style={styles.barContainer}>
-                  <View style={styles.barWrapper}>
-                    <View 
-                      style={[
-                        styles.stepsBar, 
-                        { 
-                          height: (data.steps / 12000) * 100,
-                          backgroundColor: '#4FC3F7'
-                        }
-                      ]} 
-                    />
-                    <View 
-                      style={[
-                        styles.caloriesBar, 
-                        { 
-                          height: (data.calories / 2100) * 100,
-                          backgroundColor: '#FFB74D'
-                        }
-                      ]} 
-                    />
-                  </View>
-                  <Text style={styles.dayLabel}>{data.day}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={styles.chartLegend}>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: '#4FC3F7' }]} />
-                <Text style={styles.legendText}>Steps</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View style={[styles.legendColor, { backgroundColor: '#FFB74D' }]} />
-                <Text style={styles.legendText}>Calories</Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
-
-        <View style={styles.insightsContainer}>
-          <LinearGradient
-            colors={['#0D2F10', '#173E19']}
-            style={styles.insightsCard}
-          >
-            <MaterialCommunityIcons name="lightbulb-outline" size={24} color="#00E676" />
-            <Text style={styles.insightsTitle}>Health Insights</Text>
-            <Text style={styles.insightsText}>
-              Your heart rate has been consistently in the healthy range. Consider increasing your daily steps to 10,000 for optimal cardiovascular health.
-            </Text>
-          </LinearGradient>
-        </View>
       </ScrollView>
+      {loading &&
+        <View style={styles.loadingBack}>
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size={20} />
+            <Text>Loading report...</Text>
+          </View>
+        </View>}
     </SafeAreaView>
   );
 }
 
+type SectionProps = {
+  title: string;
+  items?: string[] | null;
+  icon?: React.ReactNode;
+};
+const Section: React.FC<SectionProps> = ({ title, items, icon }) => {
+  if (!items || items.length === 0) return null;
+  return (
+    <View style={styles.sectionStyle}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+        {icon}
+        <Text style={{ color: '#4FC3F7', fontWeight: 'bold', fontSize: 16, marginLeft: icon ? 8 : 0 }}>{title}</Text>
+      </View>
+      {items.map((item, idx) => (
+        <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
+          <MaterialCommunityIcons name="check-circle-outline" size={18} color="#00E676" style={{ marginTop: 2, marginRight: 6 }} />
+          <Text style={{ color: '#B0BEC5', fontSize: 14, flex: 1 }}>{item}</Text>
+        </View>
+      ))}
+    </View>
+  );
+};
+
+type ObjectSectionProps = {
+  title: string;
+  obj?: Record<string, any> | null;
+  icon?: React.ReactNode;
+};
+const ObjectSection: React.FC<ObjectSectionProps> = ({ title, obj, icon }) => {
+  if (!obj) return null;
+  return (
+    <View style={styles.sectionStyle}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+        {icon}
+        <Text style={{ color: '#4FC3F7', fontWeight: 'bold', fontSize: 16, marginLeft: icon ? 8 : 0 }}>{title}</Text>
+      </View>
+      {Object.entries(obj).map(([key, value]) =>
+        Array.isArray(value) && value.length > 0 ? (
+          <View key={key} style={{ marginBottom: 6 }}>
+            <Text style={{ color: '#00E676', fontWeight: '600', fontSize: 14, marginBottom: 2 }}>{key.replace(/([A-Z])/g, ' $1')}</Text>
+            {value.map((v: string, idx: number) => (
+              <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
+                <MaterialCommunityIcons name="circle-small" size={18} color="#B0BEC5" />
+                <Text style={{ color: '#B0BEC5', fontSize: 14, flex: 1 }}>{v}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null
+      )}
+    </View>
+  );
+};
+
+type HealthRisksProps = {
+  risks?: any[] | null;
+};
+const HealthRisks: React.FC<HealthRisksProps> = ({ risks }) => {
+  if (!risks || risks.length === 0) return null;
+  return (
+    <View style={styles.sectionStyle}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+        <MaterialCommunityIcons name="alert-circle-outline" size={20} color="#FFB300" />
+        <Text style={{ color: '#FFB300', fontWeight: 'bold', fontSize: 16, marginLeft: 8 }}>Health Risks</Text>
+      </View>
+      {risks.map((risk, idx) => (
+        <View key={idx} style={{ marginBottom: 8 }}>
+          <Text style={{ color: '#FFB300', fontWeight: '600', fontSize: 14 }}>{risk.condition}</Text>
+          <Text style={{ color: '#B0BEC5', fontSize: 14, marginBottom: 2 }}>{risk.description}</Text>
+          {risk.preventionSteps && Array.isArray(risk.preventionSteps) && risk.preventionSteps.length > 0 && (
+            <View style={{ marginLeft: 8 }}>
+              {risk.preventionSteps.map((step: string, i: number) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                  <MaterialCommunityIcons name="circle-small" size={18} color="#B0BEC5" />
+                  <Text style={{ color: '#B0BEC5', fontSize: 13, flex: 1 }}>{step}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+};
+
+type MedicalAdviceProps = {
+  advice?: any[] | null;
+};
+const MedicalAdvice: React.FC<MedicalAdviceProps> = ({ advice }) => {
+  if (!advice || advice.length === 0) return null;
+  return (
+    <View style={styles.sectionStyle}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+        <MaterialCommunityIcons name="medical-bag" size={20} color="#00E676" />
+        <Text style={{ color: '#00E676', fontWeight: 'bold', fontSize: 16, marginLeft: 8 }}>Medical Advice</Text>
+      </View>
+      {advice.map((item, idx) => (
+        <View key={idx} style={{ marginBottom: 8 }}>
+          <Text style={{ color: '#00E676', fontWeight: '600', fontSize: 14 }}>{item.condition}</Text>
+          {item.managementSteps && Array.isArray(item.managementSteps) && item.managementSteps.length > 0 && (
+            <View style={{ marginLeft: 8, marginBottom: 2 }}>
+              {item.managementSteps.map((step: string, i: number) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                  <MaterialCommunityIcons name="circle-small" size={18} color="#B0BEC5" />
+                  <Text style={{ color: '#B0BEC5', fontSize: 13, flex: 1 }}>{step}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          {item.medicationAdvice && (
+            <Text style={{ color: '#B0BEC5', fontSize: 13, fontStyle: 'italic' }}>{item.medicationAdvice}</Text>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+};
+
+type LifestyleModificationsProps = {
+  mods?: any[] | null;
+};
+const LifestyleModifications: React.FC<LifestyleModificationsProps> = ({ mods }) => {
+  if (!mods || mods.length === 0) return null;
+  return (
+    <View style={styles.sectionStyle}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+        <MaterialCommunityIcons name="run" size={20} color="#4FC3F7" />
+        <Text style={{ color: '#4FC3F7', fontWeight: 'bold', fontSize: 16, marginLeft: 8 }}>Lifestyle Modifications</Text>
+      </View>
+      {mods.map((mod, idx) => (
+        <View key={idx} style={{ marginBottom: 6 }}>
+          <Text style={{ color: '#00E676', fontWeight: '600', fontSize: 14 }}>{mod.area}</Text>
+          {mod.recommendations && Array.isArray(mod.recommendations) && mod.recommendations.length > 0 && (
+            <View style={{ marginLeft: 8 }}>
+              {mod.recommendations.map((rec: string, i: number) => (
+                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                  <MaterialCommunityIcons name="circle-small" size={18} color="#B0BEC5" />
+                  <Text style={{ color: '#B0BEC5', fontSize: 13, flex: 1 }}>{rec}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+};
+
+
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#0D1421' 
+  container: {
+    flex: 1,
+    backgroundColor: '#0D1421'
   },
-  backgroundContainer: { 
-    position: 'absolute', 
-    width: 400, 
-    height :785,
+  backgroundContainer: {
+    position: 'absolute',
+    width: 400,
+    height: 785,
   },
-  backgroundGradient: { 
-    flex: 1 
+  backgroundGradient: {
+    flex: 1
   },
-  scrollViewContent: { 
+  scrollViewContent: {
     padding: 20,
     paddingBottom: 40
   },
@@ -311,9 +393,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: 'rgba(79, 195, 247, 0.1)'
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
     color: '#4FC3F7',
     marginBottom: 5,
     textAlign: 'center',
@@ -324,116 +406,12 @@ const styles = StyleSheet.create({
     color: '#B0BEC5',
     fontStyle: 'italic'
   },
-  metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 15,
-    marginBottom: 30
-  },
-  metricCard: {
-    width: (width - 55) / 2,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  gradientCard: {
-    borderRadius: 20,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    minHeight: 140
-  },
-  metricHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10
-  },
-  iconContainer: {
-    borderRadius: 8,
-    padding: 8
-  },
-  metricValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 5
-  },
-  metricTitle: {
-    fontSize: 14,
-    color: '#B0BEC5',
-    marginBottom: 5
-  },
-  metricStatus: {
-    fontSize: 12,
-    fontWeight: '600'
-  },
-  chartContainer: {
-    marginBottom: 30
-  },
-  chartCard: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)'
-  },
-  chartTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 20,
-    textAlign: 'center'
-  },
-  chartWrapper: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 120,
-    marginBottom: 15
-  },
-  barContainer: {
-    alignItems: 'center',
-    flex: 1
-  },
-  barWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 2,
-    marginBottom: 8
-  },
-  stepsBar: {
-    width: 8,
-    borderRadius: 4,
-    minHeight: 10
-  },
-  caloriesBar: {
-    width: 8,
-    borderRadius: 4,
-    minHeight: 10
-  },
-  dayLabel: {
-    fontSize: 10,
-    color: '#B0BEC5',
-    fontWeight: '500'
-  },
-  chartLegend: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5
-  },
-  legendColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 6
-  },
-  legendText: {
-    fontSize: 12,
-    color: '#B0BEC5'
+  sectionStyle: {
+    marginBottom: 18,
+    backgroundColor: 'rgba(178, 178, 178, 0.26)',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 10
   },
   insightsContainer: {
     marginBottom: 20
@@ -457,5 +435,24 @@ const styles = StyleSheet.create({
     color: '#B0BEC5',
     textAlign: 'center',
     lineHeight: 20
+  },
+  loadingBack: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
+    top: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)'
+  },
+  loadingBox: {
+    width: `60%`,
+    height: 40,
+    backgroundColor: '#ffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+    flexDirection: 'row',
+    gap: 5
   }
 });

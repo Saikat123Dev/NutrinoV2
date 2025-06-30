@@ -1,6 +1,7 @@
-import axios from '@/configs/axios-config';
+import axiosInstance from '@/configs/axios-config';
 import { useUser } from '@clerk/clerk-expo';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import axios from 'axios';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -17,15 +18,15 @@ export default function MealPlanningScreen() {
   const clerkId: string = user?.id as string;
   console.log(clerkId);
 
-  const [nodePositions, setNodePositions] = useState([]);
-  const nodeAnimations = useRef(Array(nodeCount).fill().map(() => ({
+  const [nodePositions, setNodePositions] = useState<Array<Record<string, any>>>([]);
+  const nodeAnimations = useRef(Array(nodeCount).fill(undefined).map(() => ({
     opacity: new Animated.Value(0),
     scale: new Animated.Value(0.5),
     position: new Animated.ValueXY()
   }))).current;
 
   useEffect(() => {
-    const initialNodePositions = Array(nodeCount).fill().map(() => {
+    const initialNodePositions = Array(nodeCount).fill(undefined).map(() => {
       const centerX = width / 2;
       const centerY = height / 2;
       const radius = Math.min(width, height) * 0.25;
@@ -97,7 +98,7 @@ export default function MealPlanningScreen() {
     if (!clerkId) return;
     try {
       setLoading(true);
-      await axios.post('/v1/user/mealplan/generate',
+      await axiosInstance.post('/v1/user/mealplan/generate',
         { clerkId }
       )
         .then(res => {
@@ -119,7 +120,7 @@ export default function MealPlanningScreen() {
   const [mealPlan, setMealPlan] = useState<Record<string, any> | null>(null);
   const getTodaysMealPlan = async () => {
     try {
-      await axios.post('/v1/user/mealplan', { clerkId })
+      await axiosInstance.post('/v1/user/mealplan', { clerkId })
         .then(res => {
           const data = res.data.data;
           console.log(data);
@@ -127,8 +128,9 @@ export default function MealPlanningScreen() {
           setMealPlan(data)
         })
     } catch (error) {
-      console.log(error.response);
-
+      if (axios.isAxiosError?.(error)) {
+        console.error("Report error: ", error.response);
+      }
     }
   }
 
@@ -209,7 +211,7 @@ export default function MealPlanningScreen() {
     }
   ];
 
-  const handleCategoryPress = (category) => {
+  const handleCategoryPress = (category: Record<string, any>) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     // Navigate to specific meal category
   };
@@ -282,7 +284,7 @@ export default function MealPlanningScreen() {
                   style={styles.quickActionGradient}
                 >
                   <MaterialCommunityIcons
-                    name={action.icon}
+                    name={action.icon as any}
                     size={24}
                     color={action.color}
                   />
@@ -322,7 +324,7 @@ export default function MealPlanningScreen() {
                 >
                   <View style={[styles.mealIconContainer, { backgroundColor: `${meal.color}20` }]}>
                     <MaterialCommunityIcons
-                      name={meal.icon}
+                      name={meal.icon as any}
                       size={32}
                       color={meal.color}
                     />
@@ -336,32 +338,6 @@ export default function MealPlanningScreen() {
               </Pressable>
             ))}
           </View>
-        </View>
-
-        <View style={styles.nutritionSummary}>
-          <LinearGradient
-            colors={['#1A237E', '#0D1421']}
-            style={styles.nutritionContainer}
-          >
-            <Text style={styles.nutritionTitle}>Today's Nutrition</Text>
-            <View style={styles.nutritionStats}>
-              <View style={styles.nutritionItem}>
-                <MaterialCommunityIcons name="fire" size={20} color="#FF6B6B" />
-                <Text style={styles.nutritionLabel}>Calories</Text>
-                <Text style={styles.nutritionValue}>1,300 / 2,000</Text>
-              </View>
-              <View style={styles.nutritionItem}>
-                <MaterialCommunityIcons name="wheat" size={20} color="#FFB74D" />
-                <Text style={styles.nutritionLabel}>Protein</Text>
-                <Text style={styles.nutritionValue}>45g / 120g</Text>
-              </View>
-              <View style={styles.nutritionItem}>
-                <MaterialCommunityIcons name="rice" size={20} color="#4FC3F7" />
-                <Text style={styles.nutritionLabel}>Carbs</Text>
-                <Text style={styles.nutritionValue}>180g / 250g</Text>
-              </View>
-            </View>
-          </LinearGradient>
         </View>
       </ScrollView>
     </SafeAreaView>

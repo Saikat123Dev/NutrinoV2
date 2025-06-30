@@ -31,8 +31,8 @@ router.post('/health', async (req, res) => {
     }
 
     // Check if there's a recent report (less than 7 days old)
-    const hasRecentReport = userDetails.HealthReport &&
-      (new Date() - new Date(userDetails.HealthReport.generatedAt)) / (1000 * 60 * 60 * 24) < 7;
+    const hasRecentReport = userDetails.healthReport &&
+      (new Date() - new Date(userDetails.healthReport.generatedAt)) / (1000 * 60 * 60 * 24) < 7;
 
     // If there's a recent report, return it
     if (hasRecentReport) {
@@ -40,19 +40,19 @@ router.post('/health', async (req, res) => {
         message: "Retrieved existing health report",
         data: {
           userDetails: userDetails,
-          healthReport: userDetails.HealthReport.originalReportText,
+          healthReport: userDetails.healthReport.originalReportText,
           structuredReport: {
-            strengths: userDetails.HealthReport.strengths,
-            areasForImprovement: userDetails.HealthReport.areasForImprovement,
-            smokingCessation: userDetails.HealthReport.smokingCessation,
-            hypertensionManagement: userDetails.HealthReport.hypertensionManagement,
-            asthmaManagement: userDetails.HealthReport.asthmaManagement,
-            stressManagement: userDetails.HealthReport.stressManagement,
-            digestiveHealth: userDetails.HealthReport.digestiveHealth,
-            sleepRecommendations: userDetails.HealthReport.sleepRecommendations,
-            healthRisks: userDetails.HealthReport.healthRisks,
-            medicalAdvice: userDetails.HealthReport.medicalAdvice,
-            lifestyleModifications: userDetails.HealthReport.lifestyleModifications
+            strengths: userDetails.healthReport.strengths,
+            areasForImprovement: userDetails.healthReport.areasForImprovement,
+            smokingCessation: userDetails.healthReport.smokingCessation,
+            hypertensionManagement: userDetails.healthReport.hypertensionManagement,
+            asthmaManagement: userDetails.healthReport.asthmaManagement,
+            stressManagement: userDetails.healthReport.stressManagement,
+            digestiveHealth: userDetails.healthReport.digestiveHealth,
+            sleepRecommendations: userDetails.healthReport.sleepRecommendations,
+            healthRisks: userDetails.healthReport.healthRisks,
+            medicalAdvice: userDetails.healthReport.medicalAdvice,
+            lifestyleModifications: userDetails.healthReport.lifestyleModifications
           }
         }
       });
@@ -115,12 +115,12 @@ router.post('/health', async (req, res) => {
 
     MENTAL HEALTH:
     ${userDetails.mentalHealth ?
-      `- Mood Patterns: ${userDetails.mentalHealth.moodPatterns?.join(', ') || 'None reported'}
+        `- Mood Patterns: ${userDetails.mentalHealth.moodPatterns?.join(', ') || 'None reported'}
        Diagnosed Issues: ${userDetails.mentalHealth.diagnosedIssues?.join(', ') || 'None reported'}
        Therapy History: ${userDetails.mentalHealth.therapyHistory || 'None reported'}
        Medication: ${userDetails.mentalHealth.medication?.join(', ') || 'None reported'}
        Last Evaluation: ${userDetails.mentalHealth.lastEvaluation || 'Not specified'}`
-    : 'No mental health data reported'}
+        : 'No mental health data reported'}
 
     Please provide:
     1. A comprehensive health assessment summary
@@ -128,6 +128,7 @@ router.post('/health', async (req, res) => {
     3. Analysis of potential health risks based on current habits
     4. Specific advice for managing identified medical conditions
     5. Lifestyle modifications to improve overall wellbeing
+    6. A short insight of the whole report through insightSummary field
 
     Structure the report with clear headings and organize information in a user-friendly format. Include both strengths and areas for improvement.
 
@@ -173,7 +174,8 @@ router.post('/health', async (req, res) => {
       "lifestyleModifications": [
         {"area": "area1", "recommendations": ["rec1", "rec2", ...]},
         {"area": "area2", "recommendations": ["rec1", "rec2", ...]}
-      ]
+      ],
+      "insightSummary": String
     }
 
     Include only the sections that are relevant to this specific user based on their health data. Put this JSON at the end of your response, clearly separated from the text report.
@@ -235,6 +237,9 @@ router.post('/health', async (req, res) => {
       };
     }
 
+    console.log(structuredReport?.insightSummary);
+
+
     // Extract only the narrative report part (excluding JSON)
     const reportText = fullText.replace(/```json\s*[\s\S]*?\s*```\s*$/, '').trim();
 
@@ -275,6 +280,7 @@ router.post('/health', async (req, res) => {
       }
     });
 
+
     // Return the generated health report
     return res.status(200).json({
       message: "Health report generated successfully",
@@ -292,7 +298,8 @@ router.post('/health', async (req, res) => {
           sleepRecommendations: healthReport.sleepRecommendations,
           healthRisks: healthReport.healthRisks,
           medicalAdvice: healthReport.medicalAdvice,
-          lifestyleModifications: healthReport.lifestyleModifications
+          lifestyleModifications: healthReport.lifestyleModifications,
+          insightSummary: structuredReport.insightSummary
         }
       }
     });

@@ -2,6 +2,7 @@ import axiosInsatance from '@/configs/axios-config';
 import { useUser } from '@clerk/clerk-expo';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
+import axios from 'axios';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -169,8 +170,9 @@ export default function ProfilePage() {
                         setFetchedData(res.data.data);
                     })
             } catch (error) {
-                console.log("Data fetch error: ", error.response);
-
+                if (axios.isAxiosError?.(error)) {
+                    console.error("Report error: ", error.response);
+                }
             }
         };
         fetchData();
@@ -199,8 +201,9 @@ export default function ProfilePage() {
             setIsSaving(true);
             await axiosInsatance.post('/v1/healthstatus/healthprofile', { clerkId, ...healthInputs })
         } catch (error) {
-            console.log(error.response);
-
+            if (axios.isAxiosError?.(error)) {
+                console.error("Report error: ", error.response);
+            }
         }
         setIsSaving(false);
     }

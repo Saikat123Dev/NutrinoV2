@@ -11,15 +11,15 @@ const nodeCount = 10;
 
 export default function HomeScreen() {
   const [activeTab] = useState('home');
-  const [nodePositions, setNodePositions] = useState([]);
-  const nodeAnimations = useRef(Array(nodeCount).fill().map(() => ({
+  const [nodePositions, setNodePositions] = useState<Array<Record<string, any>>>([]);
+  const nodeAnimations = useRef(Array(nodeCount).fill(undefined).map(() => ({
     opacity: new Animated.Value(0),
     scale: new Animated.Value(0.5),
     position: new Animated.ValueXY()
   }))).current;
 
   useEffect(() => {
-    const initialNodePositions = Array(nodeCount).fill().map(() => {
+    const initialNodePositions = Array(nodeCount).fill(undefined).map(() => {
       const centerX = width / 2;
       const centerY = height / 2;
       const radius = Math.min(width, height) * 0.3;
@@ -137,7 +137,7 @@ export default function HomeScreen() {
     }
   ];
 
-  const handleFeaturePress = (route) => {
+  const handleFeaturePress = (route: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     router.push(route);
   };
@@ -208,7 +208,7 @@ export default function HomeScreen() {
               >
                 <View style={[styles.iconContainer, { backgroundColor: `${feature.color}20` }]}>
                   <MaterialCommunityIcons
-                    name={feature.icon}
+                    name={feature.icon as any}
                     size={index === 0 ? 40 : 32}
                     color={feature.color}
                   />
@@ -223,29 +223,6 @@ export default function HomeScreen() {
               </LinearGradient>
             </Pressable>
           ))}
-        </View>
-
-        <View>
-          <LinearGradient
-            colors={['#1A237E', '#0D1421']}
-            style={styles.statsContainer}
-          >
-            <Text style={styles.statsTitle}>Today's Progress</Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <MaterialCommunityIcons name="water" size={20} color="#4FC3F7" />
-                <Text style={styles.statText}>2.3L Water</Text>
-              </View>
-              <View style={styles.statItem}>
-                <MaterialCommunityIcons name="run-fast" size={20} color="#00E676" />
-                <Text style={styles.statText}>5.2K Steps</Text>
-              </View>
-              <View style={styles.statItem}>
-                <MaterialCommunityIcons name="food-apple" size={20} color="#FFB74D" />
-                <Text style={styles.statText}>1,420 Cal</Text>
-              </View>
-            </View>
-          </LinearGradient>
         </View>
       </ScrollView>
     </SafeAreaView>
