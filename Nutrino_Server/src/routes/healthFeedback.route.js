@@ -34,7 +34,7 @@ router.post('/health', async (req, res) => {
     const hasRecentReport = userDetails.healthReport &&
       (new Date() - new Date(userDetails.healthReport.generatedAt)) / (1000 * 60 * 60 * 24) < 7;
 
-    // If there's a recent report, return it
+    // If there's a recent reporh, return it
     if (hasRecentReport) {
       return res.status(200).json({
         message: "Retrieved existing health report",

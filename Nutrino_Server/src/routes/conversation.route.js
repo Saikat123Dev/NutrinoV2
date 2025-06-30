@@ -1,15 +1,149 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import express from 'express';
 import prisma from "../lib/db.js";
+import { tavily } from "@tavily/core";
+import axios from 'axios';
 
 const router = express.Router();
 
-// Initialize the Gemini API client
+// Initialize APIs
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const tavilyClient = tavily({ apiKey: process.env.TAVILY_API_KEY });
 
-// Helper function to generate Gemini response
-async function generateGeminiResponse(message, userProfile) {
-  const prompt = `You are a knowledgeable and supportive AI Health and Nutrition Assistant designed to help users achieve their wellness goals through evidence-based advice and personalized guidance.
+// Helper function to categorize conversation type based on message content
+function categorizeConversationType(message) {
+  const lowerMessage = message.toLowerCase();
+  
+  // Nutrition related
+  if (lowerMessage.includes('diet') || lowerMessage.includes('nutrition') || 
+      lowerMessage.includes('food') || lowerMessage.includes('meal') ||
+      lowerMessage.includes('calorie') || lowerMessage.includes('vitamin') ||
+      lowerMessage.includes('protein') || lowerMessage.includes('carb')) {
+    return 'NUTRITION';
+  }
+  
+  // Fitness related
+  if (lowerMessage.includes('exercise') || lowerMessage.includes('workout') ||
+      lowerMessage.includes('fitness') || lowerMessage.includes('training') ||
+      lowerMessage.includes('muscle') || lowerMessage.includes('strength')) {
+    return 'FITNESS';
+  }
+  
+  // Mental health related
+  if (lowerMessage.includes('stress') || lowerMessage.includes('anxiety') ||
+      lowerMessage.includes('depression') || lowerMessage.includes('mental') ||
+      lowerMessage.includes('mood') || lowerMessage.includes('sleep')) {
+    return 'MENTAL_HEALTH';
+  }
+  
+  // Medical conditions
+  if (lowerMessage.includes('symptom') || lowerMessage.includes('condition') ||
+      lowerMessage.includes('disease') || lowerMessage.includes('medication') ||
+      lowerMessage.includes('treatment') || lowerMessage.includes('doctor')) {
+    return 'MEDICAL_CONDITION';
+  }
+  
+  // Weight management
+  if (lowerMessage.includes('weight') || lowerMessage.includes('lose') ||
+      lowerMessage.includes('gain') || lowerMessage.includes('bmi') ||
+      lowerMessage.includes('obesity') || lowerMessage.includes('fat')) {
+    return 'WEIGHT_MANAGEMENT';
+  }
+  
+  // Default to general health
+  return 'GENERAL_HEALTH';
+}
+
+// Keywords that trigger web search for health topics
+const SEARCH_TRIGGERS = [
+  'latest', 'recent', 'new', 'current', 'updated', 'breakthrough', 'study', 'research',
+  'news', 'today', 'this year', '2024', '2025', 'FDA', 'WHO', 'clinical trial',
+  'approved', 'latest findings', 'recent study', 'new research', 'current guidelines'
+];
+
+// Helper function to determine if query needs web search
+function shouldUseWebSearch(message) {
+  const lowerMessage = message.toLowerCase();
+  return SEARCH_TRIGGERS.some(trigger => lowerMessage.includes(trigger)) ||
+         lowerMessage.includes('what\'s new') ||
+         lowerMessage.includes('recent developments') ||
+         lowerMessage.includes('current recommendations');
+}
+
+// Enhanced web search function using Tavily
+async function performHealthSearch(query, userProfile) {
+  try {
+    // Create search query optimized for health information
+    const searchQuery = `${query} health nutrition medical research evidence-based`;
+    
+    const searchResults = await tavilyClient.search(searchQuery, {
+      searchDepth: "advanced",
+      maxResults: 5,
+      includeDomains: [
+        "nih.gov", "who.int", "mayoclinic.org", "webmd.com", "healthline.com",
+        "harvard.edu", "ncbi.nlm.nih.gov", "pubmed.ncbi.nlm.nih.gov",
+        "cdc.gov", "fda.gov", "nutrition.org", "heart.org"
+      ],
+      excludeDomains: ["pinterest.com", "facebook.com", "twitter.com"],
+      includeAnswer: true,
+      includeRawContent: false
+    });
+
+    return {
+      success: true,
+      results: searchResults.results,
+      answer: searchResults.answer,
+      query: searchQuery
+    };
+  } catch (error) {
+    console.error("Tavily search error:", error);
+    
+    // Fallback to alternative search methods
+    try {
+      const fallbackResults = await performFallbackSearch(query);
+      return fallbackResults;
+    } catch (fallbackError) {
+      console.error("Fallback search error:", fallbackError);
+      return {
+        success: false,
+        error: "Search services temporarily unavailable",
+        results: []
+      };
+    }
+  }
+}
+
+// Fallback search using alternative APIs
+async function performFallbackSearch(query) {
+  // Example using a medical/health-focused API
+  // You can replace this with your preferred backup search service
+  try {
+    const response = await axios.get(`https://api.bing.microsoft.com/v7.0/search`, {
+      headers: {
+        'Ocp-Apim-Subscription-Key': process.env.BING_API_KEY
+      },
+      params: {
+        q: `${query} site:nih.gov OR site:mayoclinic.org OR site:healthline.com`,
+        count: 5,
+        safeSearch: 'Strict'
+      }
+    });
+
+    return {
+      success: true,
+      results: response.data.webPages?.value || [],
+      answer: null,
+      query: query,
+      source: 'bing_fallback'
+    };
+  } catch (error) {
+    throw new Error("All search services failed");
+  }
+}
+
+// Enhanced Gemini response generation with search integration
+async function generateEnhancedGeminiResponse(message, userProfile, searchData = null) {
+  let prompt = `You are a knowledgeable and supportive AI Health and Nutrition Assistant designed to help users achieve their wellness goals through evidence-based advice and personalized guidance.
 
 User Profile:
 - Name: **${userProfile.name}**
@@ -23,51 +157,89 @@ User Profile:
 - Preferred Cuisine: **${userProfile.preferredCuisine}**
 - Nutrition Focus: **${userProfile.nutritionFocus}**
 
-Instructions:
-The user has asked: "${message}"
+User Question: "${message}"`;
 
-Your task is to generate a structured JSON response in the following format:
+  // Add search context if available
+  if (searchData && searchData.success) {
+    prompt += `\n\nRecent Research and Information:`;
+    
+    if (searchData.answer) {
+      prompt += `\nLatest Summary: ${searchData.answer}`;
+    }
+    
+    if (searchData.results && searchData.results.length > 0) {
+      prompt += `\n\nRecent Sources:`;
+      searchData.results.forEach((result, index) => {
+        prompt += `\n${index + 1}. ${result.title}\n   ${result.content}\n   Source: ${result.url}`;
+      });
+    }
+    
+    prompt += `\n\nPlease incorporate this latest information into your response while maintaining accuracy and proper medical disclaimers.`;
+  }
+
+  prompt += `\n\nYour task is to generate a structured JSON response in the following format:
 {
   "success": true,
-  "answer": "Clear, evidence-based answer to their health/nutrition question",
+  "answer": "Clear, evidence-based answer incorporating latest research when available",
   "explanation": "Detailed explanation with scientific backing and practical tips",
   "feedback": "Supportive feedback acknowledging their health journey",
   "followUp": "A related follow-up question to encourage healthy habits",
-  "safety": "Important safety note or disclaimer when appropriate"
+  "safety": "Important safety note or disclaimer when appropriate",
+  "sources": "List of credible sources referenced (if search was used)",
+  "lastUpdated": "Current date to show information recency"
 }
 
 Guidelines:
 - Provide **evidence-based** health and nutrition information
+- **Prioritize recent research** and current guidelines when available
 - Consider the user's profile when giving personalized advice
 - Always include appropriate **disclaimers** for medical advice
 - Suggest **practical, actionable steps** the user can take
 - Be supportive and encouraging about their health journey
-- If you're uncertain about specific medical advice, clearly state limitations
+- **Cite credible sources** when using search results
 - Focus on **prevention and wellness** rather than treatment
 - Include **safety notes** for any recommendations that could have risks
+- **Indicate if information is current** vs. general knowledge
 - Output ONLY the raw JSON object without markdown formatting
 
-IMPORTANT: If you cannot provide a confident answer due to the complexity of the question or need for current research, indicate this clearly in your response.`;
+IMPORTANT: If search results are provided, integrate them naturally and cite sources appropriately. Always maintain medical disclaimers and encourage consultation with healthcare professionals for specific medical advice.`;
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      generationConfig: {
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 2048,
+      }
+    });
+    
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
 
     const cleanedText = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(cleanedText);
+    const jsonResponse = JSON.parse(cleanedText);
+    
+    // Add metadata
+    jsonResponse.lastUpdated = new Date().toISOString();
+    jsonResponse.searchUsed = !!searchData;
+    
+    return jsonResponse;
   } catch (error) {
     console.error("Error generating Gemini response:", error);
     return {
       success: false,
       error: "Failed to generate response",
-      message: error.message
+      message: error.message,
+      lastUpdated: new Date().toISOString()
     };
   }
 }
 
-// Main ask route with health and nutrition focus
+// Main enhanced ask route
+// Main enhanced ask route
 router.post("/ask", async (req, res) => {
   try {
     const { email, message } = req.body;
@@ -94,7 +266,7 @@ router.post("/ask", async (req, res) => {
       });
     }
 
-    // Create a safe user profile object with all necessary fields
+    // Create a safe user profile object
     const safeUser = {
       name: user.name || "User",
       age: user.healthProfile?.age?.toString() || "Not specified",
@@ -108,35 +280,58 @@ router.post("/ask", async (req, res) => {
       nutritionFocus: user.healthProfile?.nutritionFocus || "Balanced nutrition"
     };
 
-    try {
-      // Get response from Gemini
-      const jsonResponse = await generateGeminiResponse(message, safeUser);
+    let searchData = null;
+    let webSearchUsed = false;
+    const conversationType = categorizeConversationType(message);
 
-      // Save the conversation to the database
+    // Determine if web search is needed
+    if (shouldUseWebSearch(message)) {
+      console.log("Performing web search for:", message);
+      searchData = await performHealthSearch(message, safeUser);
+      webSearchUsed = searchData.success;
+    }
+
+    try {
+      // Generate response with or without search data
+      const jsonResponse = await generateEnhancedGeminiResponse(message, safeUser, searchData);
+
+      // Prepare conversation data
+      const conversationData = {
+        userId: user.id,
+        userMessage: message,
+        aiResponse: JSON.stringify(jsonResponse),
+        usedWebSearch: webSearchUsed,
+        conversationType: conversationType
+      };
+
+      // Add search metadata if search was used
+      if (webSearchUsed && searchData) {
+        conversationData.searchQuery = searchData.query;
+        conversationData.searchResults = JSON.stringify(searchData.results);
+      }
+
       const savedConversation = await prisma.healthConversation.create({
-        data: {
-          userId: user.id,
-          userMessage: message,
-          aiResponse: JSON.stringify(jsonResponse),
-          usedWebSearch: false
-        }
+        data: conversationData
       });
 
       // Add metadata to the response
       jsonResponse.conversationId = savedConversation.id;
-      jsonResponse.webSearchUsed = false;
+      jsonResponse.webSearchUsed = webSearchUsed;
+      jsonResponse.timestamp = new Date().toISOString();
 
-      // Return the response
+      // Return the enhanced response
       res.json(jsonResponse);
 
     } catch (error) {
       console.error("Error generating response:", error);
       
-      // Final fallback response
+      // Enhanced fallback response
       res.status(500).json({
         success: false,
-        error: "I'm having trouble processing your request right now. Please try again later or consult with a healthcare professional.",
-        message: error.message
+        error: "I'm having trouble processing your request right now. Please try again later or consult with a healthcare professional for immediate concerns.",
+        message: error.message,
+        timestamp: new Date().toISOString(),
+        fallback: true
       });
     }
   } catch (error) {
@@ -144,7 +339,8 @@ router.post("/ask", async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Internal Server Error",
-      message: error.message
+      message: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });
