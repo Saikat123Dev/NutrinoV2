@@ -57,8 +57,6 @@ router.post('/mealplan/generate', async (req, res) => {
       },
     });
 
-    console.log(userDetails);
-
 
 
     if (!userDetails) {
@@ -66,8 +64,10 @@ router.post('/mealplan/generate', async (req, res) => {
     }
 
 
-    const hasRecentMealPlan = userDetails.mealPlan &&
-      (new Date() - new Date(userDetails.mealPlan.generatedAt)) / (1000 * 60 * 60 * 24) < 14;
+    // const hasRecentMealPlan = userDetails.mealPlan &&
+    //   (new Date() - new Date(userDetails.mealPlan.generatedAt)) / (1000 * 60 * 60 * 24) < 14;
+
+    const hasRecentMealPlan = false;
 
     if (hasRecentMealPlan && !forceRegenerate) {
       const completeMealPlan = await prisma.mealPlan.findUnique({
@@ -332,6 +332,8 @@ router.post('/mealplan/generate', async (req, res) => {
 
       // Format response data
       const responseData = formatMealPlanResponse(completeMealPlan, startDate, originalPlanObject);
+
+      // console.log(responseData);
 
       return res.status(200).json({
         message: "Meal plan generated successfully",
@@ -2633,6 +2635,8 @@ router.post('/mealplan/day', async (req, res) => {
     if (!dailyPlan) {
       return sendErrorResponse(res, 404, `Day ${day} not found in the meal plan`);
     }
+
+    // console.log(dailyPlan);
 
     return res.status(200).json({
       message: `Day ${day} retrieved successfully`,
