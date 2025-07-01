@@ -42,35 +42,33 @@ enum Frequency {
 
 // Add this enum for conversation types
 enum ConversationType {
-  NUTRITION
-  FITNESS
-  MENTAL_HEALTH
-  MEDICAL_CONDITION
-  WEIGHT_MANAGEMENT
   GENERAL_HEALTH
+  NUTRITION_FACTS
+  MEAL_PLANNING
+  EXERCISE_ADVICE
+  MEDICAL_QUERY
 }
 
 // Add this model to your existing schema.prisma file
 model HealthConversation {
-  id               Int              @id @default(autoincrement())
-  userId           Int
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     Int  @id @default(autoincrement())
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Conversation content
-  userMessage      String           @db.Text
-  aiResponse       String           @db.Text // JSON string containing the AI response
-    searchQuery      String?   @db.Text
-  searchResults    String?   @db.Text
+  userMessage String @db.Text
+  aiResponse  String @db.Text // JSON string containing the AI response
+
   // Metadata
   usedWebSearch    Boolean          @default(false)
   sources          String?          @db.Text // JSON string containing sources if web search was used
   isFallback       Boolean          @default(false) // True if this was a fallback response
   conversationType ConversationType @default(GENERAL_HEALTH)
-  
+
   // Timestamps
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([userId])
   @@index([createdAt])
   @@index([conversationType])
@@ -84,15 +82,16 @@ model User {
   email   String @unique
   clerkId String @unique
 
-  healthProfile      HealthProfile?
-  badHabits          BadHabit[]
-  sleepPatterns      SleepPattern[]
-  stressFactors      StressSource[]
-  mentalHealth       MentalHealth?
-  healthReport       HealthReport?
-  mealPlan           MealPlan?
+  healthProfile       HealthProfile?
+  badHabits           BadHabit[]
+  sleepPatterns       SleepPattern[]
+  stressFactors       StressSource[]
+  mentalHealth        MentalHealth?
+  healthReport        HealthReport?
+  mealPlan            MealPlan?
   healthConversations HealthConversation[] // Add this line
 }
+
 model HealthProfile {
   id                 Int            @id @default(autoincrement())
   userId             Int            @unique

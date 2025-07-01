@@ -57,13 +57,17 @@ router.post('/mealplan/generate', async (req, res) => {
       },
     });
 
+
+
     if (!userDetails) {
       return sendErrorResponse(res, 404, "User not found");
     }
 
 
-    const hasRecentMealPlan = userDetails.mealPlan &&
-      (new Date() - new Date(userDetails.mealPlan.generatedAt)) / (1000 * 60 * 60 * 24) < 14;
+    // const hasRecentMealPlan = userDetails.mealPlan &&
+    //   (new Date() - new Date(userDetails.mealPlan.generatedAt)) / (1000 * 60 * 60 * 24) < 14;
+
+    const hasRecentMealPlan = false;
 
     if (hasRecentMealPlan && !forceRegenerate) {
       const completeMealPlan = await prisma.mealPlan.findUnique({
@@ -168,7 +172,7 @@ router.post('/mealplan/generate', async (req, res) => {
     const stressIssues = userDetails.stressFactors.map(factor => factor.stressType);
     const mentalHealthIssues = userDetails.mentalHealth?.diagnosedIssues || [];
 
-    // Compile health insights from HealthReport
+    // Compile health insights from healthReport
     const healthInsights = compileHealthInsights(userDetails);
 
     // Get personalized recommendations based on user's health profile
@@ -229,7 +233,7 @@ router.post('/mealplan/generate', async (req, res) => {
 
       // Race between the AI request and a timeout
       const textResult = await Promise.race([
-        aiPromise    ]);
+        aiPromise]);
 
       originalPlanText = textResult.text;
 
@@ -328,6 +332,8 @@ router.post('/mealplan/generate', async (req, res) => {
 
       // Format response data
       const responseData = formatMealPlanResponse(completeMealPlan, startDate, originalPlanObject);
+
+      // console.log(responseData);
 
       return res.status(200).json({
         message: "Meal plan generated successfully",
@@ -448,29 +454,29 @@ function compileHealthInsights(userDetails) {
     medicalAdvice: []
   };
 
-  if (!userDetails.HealthReport) {
+  if (!userDetails.healthReport) {
     return insights;
   }
 
   // Extract nutrition advice from health report
-  if (userDetails.HealthReport.hypertensionManagement?.lifestyle) {
-    const dietAdvice = userDetails.HealthReport.hypertensionManagement.lifestyle
+  if (userDetails.healthReport.hypertensionManagement?.lifestyle) {
+    const dietAdvice = userDetails.healthReport.hypertensionManagement.lifestyle
       .filter(item => item.includes("Diet") || item.includes("food") || item.includes("sodium"))
       .join(". ");
     if (dietAdvice) insights.nutritionAdvice.push(dietAdvice);
   }
 
-  if (userDetails.HealthReport.smokingCessation) {
+  if (userDetails.healthReport.smokingCessation) {
     insights.nutritionAdvice.push("Include foods rich in antioxidants to support recovery from smoking.");
   }
 
-  if (userDetails.HealthReport.digestiveHealth?.dietaryChanges) {
-    insights.nutritionAdvice.push(userDetails.HealthReport.digestiveHealth.dietaryChanges.join(". "));
+  if (userDetails.healthReport.digestiveHealth?.dietaryChanges) {
+    insights.nutritionAdvice.push(userDetails.healthReport.digestiveHealth.dietaryChanges.join(". "));
   }
 
   // Extract lifestyle recommendations
-  if (userDetails.HealthReport.lifestyleModifications) {
-    const lifestyleNutrition = userDetails.HealthReport.lifestyleModifications
+  if (userDetails.healthReport.lifestyleModifications) {
+    const lifestyleNutrition = userDetails.healthReport.lifestyleModifications
       .filter(mod => mod.area === "Nutrition")
       .flatMap(mod => mod.recommendations);
 
@@ -478,7 +484,7 @@ function compileHealthInsights(userDetails) {
       insights.nutritionAdvice.push(...lifestyleNutrition);
     }
 
-    const otherLifestyleRecs = userDetails.HealthReport.lifestyleModifications
+    const otherLifestyleRecs = userDetails.healthReport.lifestyleModifications
       .filter(mod => mod.area !== "Nutrition")
       .flatMap(mod => mod.recommendations);
 
@@ -488,13 +494,13 @@ function compileHealthInsights(userDetails) {
   }
 
   // Extract health risks
-  if (userDetails.HealthReport.healthRisks) {
-    insights.healthRisks = userDetails.HealthReport.healthRisks;
+  if (userDetails.healthReport.healthRisks) {
+    insights.healthRisks = userDetails.healthReport.healthRisks;
   }
 
   // Extract medical advice
-  if (userDetails.HealthReport.medicalAdvice) {
-    insights.medicalAdvice = userDetails.HealthReport.medicalAdvice;
+  if (userDetails.healthReport.medicalAdvice) {
+    insights.medicalAdvice = userDetails.healthReport.medicalAdvice;
   }
 
   return insights;
@@ -894,8 +900,8 @@ function parseAIResponse(responseText, userName, duration) {
     // Parse daily plans (this is more complex and would depend on the format)
     // For simplicity, we'll just note that the daily plans exist and will be processed separately
     planObject.hasDailyPlans = responseText.includes(`${duration}-Day Meal Plan`) ||
-                               responseText.includes("Daily Plans") ||
-                               responseText.includes("Day 1");
+      responseText.includes("Daily Plans") ||
+      responseText.includes("Day 1");
   } catch (error) {
     console.error("Error parsing AI response:", error);
   }
@@ -1310,7 +1316,7 @@ async function createMealWithExternalSearch(
 
     // Race between the search request and a timeout
     const searchResult = await Promise.race([
-      searchPromise   ]);
+      searchPromise]);
 
     // Default values for meal
     let ingredients = getMealDefaultIngredients(mealName, mealType);
@@ -2629,6 +2635,8 @@ router.post('/mealplan/day', async (req, res) => {
     if (!dailyPlan) {
       return sendErrorResponse(res, 404, `Day ${day} not found in the meal plan`);
     }
+
+    // console.log(dailyPlan);
 
     return res.status(200).json({
       message: `Day ${day} retrieved successfully`,

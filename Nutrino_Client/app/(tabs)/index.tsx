@@ -11,15 +11,15 @@ const nodeCount = 10;
 
 export default function HomeScreen() {
   const [activeTab] = useState('home');
-  const [nodePositions, setNodePositions] = useState([]);
-  const nodeAnimations = useRef(Array(nodeCount).fill().map(() => ({
+  const [nodePositions, setNodePositions] = useState<Array<Record<string, any>>>([]);
+  const nodeAnimations = useRef(Array(nodeCount).fill(undefined).map(() => ({
     opacity: new Animated.Value(0),
     scale: new Animated.Value(0.5),
     position: new Animated.ValueXY()
   }))).current;
 
   useEffect(() => {
-    const initialNodePositions = Array(nodeCount).fill().map(() => {
+    const initialNodePositions = Array(nodeCount).fill(undefined).map(() => {
       const centerX = width / 2;
       const centerY = height / 2;
       const radius = Math.min(width, height) * 0.3;
@@ -137,7 +137,7 @@ export default function HomeScreen() {
     }
   ];
 
-  const handleFeaturePress = (route) => {
+  const handleFeaturePress = (route: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     router.push(route);
   };
@@ -174,7 +174,7 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
         <View style={styles.headerContainer}>
           <Text style={styles.title}>Nutrino AI</Text>
-            <Text style={styles.motto}>"Wellness Through Intelligence"</Text>
+          <Text style={styles.motto}>"Wellness Through Intelligence"</Text>
         </View>
 
         <View style={styles.featuresGrid}>
@@ -183,7 +183,7 @@ export default function HomeScreen() {
               key={feature.id}
               style={({ pressed }) => [
                 styles.featureCard,
-                { 
+                {
                   transform: [{ scale: pressed ? 0.95 : 1 }],
                   width: index === 0 ? width - 40 : (width - 60) / 2,
                   marginBottom: index === 0 ? 20 : 0
@@ -195,7 +195,7 @@ export default function HomeScreen() {
                 colors={[...feature.gradientColors, '#121212']}
                 style={[
                   styles.gradientCard,
-                  { 
+                  {
                     shadowColor: feature.glowColor,
                     shadowOpacity: 0.3,
                     shadowOffset: { width: 0, height: 0 },
@@ -207,10 +207,10 @@ export default function HomeScreen() {
                 end={{ x: 1, y: 1 }}
               >
                 <View style={[styles.iconContainer, { backgroundColor: `${feature.color}20` }]}>
-                  <MaterialCommunityIcons 
-                    name={feature.icon} 
-                    size={index === 0 ? 40 : 32} 
-                    color={feature.color} 
+                  <MaterialCommunityIcons
+                    name={feature.icon as any}
+                    size={index === 0 ? 40 : 32}
+                    color={feature.color}
                   />
                 </View>
                 <Text style={[styles.featureTitle, { fontSize: index === 0 ? 20 : 16 }]}>
@@ -224,48 +224,25 @@ export default function HomeScreen() {
             </Pressable>
           ))}
         </View>
-
-        <View style={styles.bottomContainer}>
-          <LinearGradient
-            colors={['#1A237E', '#0D1421']}
-            style={styles.statsContainer}
-          >
-            <Text style={styles.statsTitle}>Today's Progress</Text>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <MaterialCommunityIcons name="water" size={20} color="#4FC3F7" />
-                <Text style={styles.statText}>2.3L Water</Text>
-              </View>
-              <View style={styles.statItem}>
-                <MaterialCommunityIcons name="run-fast" size={20} color="#00E676" />
-                <Text style={styles.statText}>5.2K Steps</Text>
-              </View>
-              <View style={styles.statItem}>
-                <MaterialCommunityIcons name="food-apple" size={20} color="#FFB74D" />
-                <Text style={styles.statText}>1,420 Cal</Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#0D1421' 
+  container: {
+    flex: 1,
+    backgroundColor: '#0D1421'
   },
-  backgroundContainer: { 
-    position: 'absolute', 
-    width: 400, 
-    height :785,
+  backgroundContainer: {
+    position: 'absolute',
+    width: 400,
+    height: 785,
   },
-  backgroundGradient: { 
-    flex: 1 
+  backgroundGradient: {
+    flex: 1
   },
-  scrollViewContent: { 
+  scrollViewContent: {
     padding: 20,
     paddingBottom: 40
   },
@@ -274,9 +251,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     paddingTop: 0
   },
-  title: { 
-    fontSize: 32, 
-    fontWeight: 'bold', 
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
     color: '#32a852',
     marginBottom: 0,
     textAlign: 'center',
@@ -350,7 +327,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8, // For Android shadow
   },
-  
+
   statsTitle: {
     fontSize: 20,
     fontWeight: '700',
@@ -359,14 +336,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 0.5,
   },
-  
+
   statsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'stretch',
     gap: 16, // Add spacing between items
   },
-  
+
   statItem: {
     alignItems: 'center',
     flex: 1,
@@ -379,7 +356,7 @@ const styles = StyleSheet.create({
     minHeight: 80,
     justifyContent: 'center',
   },
-  
+
   statValue: {
     fontSize: 24,
     fontWeight: '800',
@@ -387,7 +364,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     textAlign: 'center',
   },
-  
+
   statText: {
     fontSize: 13,
     color: '#94A3B8',
@@ -397,5 +374,5 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     opacity: 0.8,
   },
-  
+
 });

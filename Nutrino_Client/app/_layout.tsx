@@ -1,19 +1,20 @@
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { ClerkLoaded, ClerkProvider } from '@clerk/clerk-expo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, ActivityIndicator } from 'react-native';
-import 'react-native-reanimated';
-import { ClerkLoaded, ClerkProvider } from '@clerk/clerk-expo';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
+import { ActivityIndicator, Text, View } from 'react-native';
+import 'react-native-reanimated';
 
 // Optimized token cache with AsyncStorage
 const tokenCache = {
   async getToken(key: string) {
     try {
       return await AsyncStorage.getItem(key);
+      
     } catch (err) {
       console.log('Token cache get error:', err);
       return null;

@@ -1,24 +1,31 @@
+import axiosInstance from '@/configs/axios-config';
+import { useUser } from '@clerk/clerk-expo';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import axios from 'axios';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Dimensions, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Easing, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 const nodeCount = 8;
 
 export default function MealPlanningScreen() {
-  const [nodePositions, setNodePositions] = useState([]);
-  const nodeAnimations = useRef(Array(nodeCount).fill().map(() => ({
+  // get the current user
+  const { user } = useUser();
+  const clerkId: string = user?.id as string;
+
+  const [nodePositions, setNodePositions] = useState<Array<Record<string, any>>>([]);
+  const nodeAnimations = useRef(Array(nodeCount).fill(undefined).map(() => ({
     opacity: new Animated.Value(0),
     scale: new Animated.Value(0.5),
     position: new Animated.ValueXY()
   }))).current;
 
   useEffect(() => {
-    const initialNodePositions = Array(nodeCount).fill().map(() => {
+    const initialNodePositions = Array(nodeCount).fill(undefined).map(() => {
       const centerX = width / 2;
       const centerY = height / 2;
       const radius = Math.min(width, height) * 0.25;
@@ -83,85 +90,55 @@ export default function MealPlanningScreen() {
     });
   }, []);
 
-  const mealCategories = [
-    {
-      id: 1,
-      title: 'Breakfast',
-      icon: 'coffee-outline',
-      color: '#FFB74D',
-      gradientColors: ['#4d1c02', '#7A3E00'],
-      glowColor: '#FFB74D',
-      time: '7:00 AM',
-      calories: '320 Cal',
-      description: 'Start your day right'
-    },
-    {
-      id: 2,
-      title: 'Lunch',
-      icon: 'food-outline',
-      color: '#66BB6A',
-      gradientColors: ['#1B5E20', '#2E7D32'],
-      glowColor: '#66BB6A',
-      time: '12:30 PM',
-      calories: '450 Cal',
-      description: 'Balanced midday meal'
-    },
-    {
-      id: 3,
-      title: 'Dinner',
-      icon: 'silverware-fork-knife',
-      color: '#EF5350',
-      gradientColors: ['#B71C1C', '#C62828'],
-      glowColor: '#EF5350',
-      time: '7:00 PM',
-      calories: '380 Cal',
-      description: 'End with nutrition'
-    },
-    {
-      id: 4,
-      title: 'Snacks',
-      icon: 'food-apple-outline',
-      color: '#AB47BC',
-      gradientColors: ['#4A148C', '#6A1B9A'],
-      glowColor: '#AB47BC',
-      time: 'Anytime',
-      calories: '150 Cal',
-      description: 'Healthy treats'
+  // Option actions
+  // generate meal plan
+  const [mealPlan, setMealPlan] = useState<Record<string, any> | null>(null);
+  const [generating, setGenerating] = useState<boolean>(false);
+  const generateMealPlan = async () => {
+    if (!clerkId) return;
+    try {
+      setGenerating(true);
+      await axiosInstance.post('/v1/user/mealplan/generate',
+        { clerkId }
+      )
+        .then(res => {
+          const resdata = res.data.data
+          setMealPlan(resdata);
+        })
+    } catch (error) {
+      console.error("Failed generating: ", error);
     }
-  ];
+    setGenerating(false);
+  }
 
-  const quickActions = [
-    {
-      id: 1,
-      title: 'Generate Plan',
-      icon: 'auto-fix',
-      color: '#4FC3F7',
-      action: 'generate'
-    },
-    {
-      id: 2,
-      title: 'Food Scanner',
-      icon: 'camera-outline',
-      color: '#00E676',
-      action: 'scan'
-    },
-    {
-      id: 3,
-      title: 'Recipes',
-      icon: 'book-open-outline',
-      color: '#FF9800',
-      action: 'recipes'
+  // get curremt 7 day meal plan
+  const [mealLoading, setMealLoading] = useState<boolean>(false);
+  const getLoadedMealPlan = async () => {
+    try {
+      setMealLoading(true)
+      await axiosInstance.post('/v1/user/mealplan', { clerkId })
+        .then(res => {
+          const data = res.data.data;
+          // console.log(data);
+
+          setMealPlan(data)
+        })
+    } catch (error) {
+      if (axios.isAxiosError?.(error)) {
+        const status = error.response?.status;
+        if (status === 404) generateMealPlan() // If meal plan is not there
+      }
     }
-  ];
+    setMealLoading(false);
+  }
 
-  const handleCategoryPress = (category) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Navigate to specific meal category
-  };
+  useEffect(() => {
+    getLoadedMealPlan();
+  }, []);
 
-  const handleActionPress = (action) => {
+  const handleActionPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    // Handle quick actions
+    generateMealPlan();
   };
 
   const handleBackPress = () => {
@@ -208,122 +185,107 @@ export default function MealPlanningScreen() {
         </View>
 
         <View style={styles.quickActionsContainer}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActionsRow}>
-            {quickActions.map((action) => (
-              <Pressable
-                key={action.id}
-                style={({ pressed }) => [
-                  styles.quickActionButton,
-                  { transform: [{ scale: pressed ? 0.95 : 1 }] }
-                ]}
-                onPress={() => handleActionPress(action.action)}
-              >
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
-                  style={styles.quickActionGradient}
-                >
-                  <MaterialCommunityIcons 
-                    name={action.icon} 
-                    size={24} 
-                    color={action.color} 
-                  />
-                  <Text style={styles.quickActionText}>{action.title}</Text>
-                </LinearGradient>
-              </Pressable>
-            ))}
-          </View>
+          <Pressable style={({ pressed }) => [styles.quickActionButton, { transform: [{ scale: pressed ? 0.95 : 1 }] }]} disabled={generating || mealLoading} onPress={handleActionPress} >
+            <LinearGradient colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} style={styles.quickActionGradient}>
+              {generating && <ActivityIndicator />}
+              {!generating && <MaterialCommunityIcons name={'auto-fix'} size={24} color={'#4FC3F7'} />}
+              <Text style={styles.quickActionText}>{generating ? "Generating" : "Generate"} plans</Text>
+            </LinearGradient>
+          </Pressable>
         </View>
 
-        <View style={styles.mealsContainer}>
-          <Text style={styles.sectionTitle}>Today's Meals</Text>
-          <View style={styles.mealsGrid}>
-            {mealCategories.map((meal) => (
-              <Pressable
-                key={meal.id}
-                style={({ pressed }) => [
-                  styles.mealCard,
-                  { transform: [{ scale: pressed ? 0.95 : 1 }] }
-                ]}
-                onPress={() => handleCategoryPress(meal)}
-              >
-                <LinearGradient
-                  colors={[...meal.gradientColors, '#121212']}
-                  style={[
-                    styles.mealGradient,
-                    { 
-                      shadowColor: meal.glowColor,
-                      shadowOpacity: 0.3,
-                      shadowOffset: { width: 0, height: 0 },
-                      shadowRadius: 8,
-                      elevation: 6,
-                    }
-                  ]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <View style={[styles.mealIconContainer, { backgroundColor: `${meal.color}20` }]}>
-                    <MaterialCommunityIcons 
-                      name={meal.icon} 
-                      size={32} 
-                      color={meal.color} 
-                    />
-                  </View>
-                  <Text style={styles.mealTitle}>{meal.title}</Text>
-                  <Text style={styles.mealTime}>{meal.time}</Text>
-                  <Text style={styles.mealCalories}>{meal.calories}</Text>
-                  <Text style={styles.mealDescription}>{meal.description}</Text>
-                  <View style={[styles.mealGlowEffect, { backgroundColor: meal.glowColor }]} />
-                </LinearGradient>
-              </Pressable>
-            ))}
-          </View>
-        </View>
+        {mealLoading && <View style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10 }}>
+          <ActivityIndicator size={20} />
+          <Text style={{ color: '#ffff' }}>Loading plans...</Text>
+        </View>}
 
-        <View style={styles.nutritionSummary}>
-          <LinearGradient
-            colors={['#1A237E', '#0D1421']}
-            style={styles.nutritionContainer}
-          >
-            <Text style={styles.nutritionTitle}>Today's Nutrition</Text>
-            <View style={styles.nutritionStats}>
-              <View style={styles.nutritionItem}>
-                <MaterialCommunityIcons name="fire" size={20} color="#FF6B6B" />
-                <Text style={styles.nutritionLabel}>Calories</Text>
-                <Text style={styles.nutritionValue}>1,300 / 2,000</Text>
-              </View>
-              <View style={styles.nutritionItem}>
-                <MaterialCommunityIcons name="wheat" size={20} color="#FFB74D" />
-                <Text style={styles.nutritionLabel}>Protein</Text>
-                <Text style={styles.nutritionValue}>45g / 120g</Text>
-              </View>
-              <View style={styles.nutritionItem}>
-                <MaterialCommunityIcons name="rice" size={20} color="#4FC3F7" />
-                <Text style={styles.nutritionLabel}>Carbs</Text>
-                <Text style={styles.nutritionValue}>180g / 250g</Text>
-              </View>
-            </View>
-          </LinearGradient>
-        </View>
+        {(mealPlan && mealPlan.dailyPlans?.length > 0) ?
+          <WeeklyMealPlanList mealPlan={mealPlan} /> :
+          !mealLoading && <Text style={{ color: "#ffff", fontSize: 17, textAlign: 'center' }}>You don't have any meal plans. Try to generate it</Text>
+        }
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+
+const DayPlanCard = ({ plan }: { plan: Record<string, any> | null }) => {
+  const handleMealPress = () => {
+    if (!plan?.day) return;
+    router.push({ pathname: '/mealplanning/dailyMealPlan', params: { day: plan.day } })
+  }
+  return (
+    plan ?
+      <Pressable android_ripple={{ color: "rgba(31, 74, 98, 0.06)" }} style={[styles.nutritionContainer, { marginBottom: 5, backgroundColor: '#181F2F' }]} onPress={handleMealPress}>
+        <Text style={styles.nutritionTitle}>{plan.dayName}</Text>
+        <View style={styles.nutritionStats}>
+          <View style={styles.nutritionItem}>
+            <MaterialCommunityIcons name="fire" size={22} color="#FFB74D" />
+            <Text style={styles.nutritionValue}>{plan.totalCalories} Cal</Text>
+            <Text style={styles.nutritionLabel}>Calories</Text>
+          </View>
+          <View style={styles.nutritionItem}>
+            <MaterialCommunityIcons name="food-variant" size={22} color="#66BB6A" />
+            <Text style={styles.nutritionValue}>{plan.totalProtein}g</Text>
+            <Text style={styles.nutritionLabel}>Protein</Text>
+          </View>
+          <View style={styles.nutritionItem}>
+            <MaterialCommunityIcons name="noodles" size={22} color="#4FC3F7" />
+            <Text style={styles.nutritionValue}>{plan.totalCarbs}g</Text>
+            <Text style={styles.nutritionLabel}>Carbs</Text>
+          </View>
+          <View style={styles.nutritionItem}>
+            <MaterialCommunityIcons name="oil" size={22} color="#EF5350" />
+            <Text style={styles.nutritionValue}>{plan.totalFat}g</Text>
+            <Text style={styles.nutritionLabel}>Fat</Text>
+          </View>
+          <View style={styles.nutritionItem}>
+            <MaterialCommunityIcons name="cup-water" size={22} color="#00E676" />
+            <Text style={styles.nutritionValue}>{plan.waterIntake}ml</Text>
+            <Text style={styles.nutritionLabel}>Water</Text>
+          </View>
+        </View>
+        {/* You can add a button or expand to show meals for the day */}
+      </Pressable>
+      : null
+  )
+};
+
+const WeeklyMealPlanList = ({ mealPlan }: { mealPlan: Record<string, any> | null }) => {
+  if (!mealPlan || !mealPlan.dailyPlans?.length) return null;
+  return (
+    <View style={styles.nutritionSummary}>
+      <Text style={styles.sectionTitle}>7-Day Meal Plan</Text>
+      <FlatList
+        data={mealPlan.dailyPlans}
+        keyExtractor={item => item.day.toString()}
+        renderItem={({ item }) => <DayPlanCard plan={item} />}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={false}
+      />
+    </View>
+  );
+};
+
+
+
+// Usage in your main component's JSX (add below mealsContainer in ScrollView):
+// <WeeklyMealPlanList mealPlan={mealPlan} />
+
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#0D1421' 
+  container: {
+    flex: 1,
+    backgroundColor: '#0D1421'
   },
-  backgroundContainer: { 
-    position: 'absolute', 
-    width: 400, 
-    height :785,
+  backgroundContainer: {
+    position: 'absolute',
+    width: 400,
+    height: 785,
   },
-  backgroundGradient: { 
-    flex: 1 
+  backgroundGradient: {
+    flex: 1
   },
-  scrollViewContent: { 
+  scrollViewContent: {
     padding: 20,
     paddingBottom: 40
   },
@@ -340,9 +302,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.1)'
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
     color: '#FFB74D',
     marginBottom: 5,
     textAlign: 'center',
@@ -362,26 +324,24 @@ const styles = StyleSheet.create({
   quickActionsContainer: {
     marginBottom: 30
   },
-  quickActionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10
-  },
   quickActionButton: {
     flex: 1,
     borderRadius: 15,
-    overflow: 'hidden'
+    overflow: 'hidden',
   },
   quickActionGradient: {
     padding: 15,
     alignItems: 'center',
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)'
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10
   },
   quickActionText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 17,
     fontWeight: '500',
     marginTop: 5
   },
