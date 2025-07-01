@@ -7,8 +7,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export const useWarmUpBrowser = () => {
   useEffect(() => {
-    // Warm up the android browser to improve UX
-    // https://docs.expo.dev/guides/authentication/#improving-user-experience
     void WebBrowser.warmUpAsync();
     return () => {
       void WebBrowser.coolDownAsync();
