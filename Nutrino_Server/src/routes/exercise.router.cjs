@@ -22,11 +22,11 @@ const makeAPIRequest = (path) => {
 
     const req = https.request(options, function (res) {
       const chunks = [];
-      
+
       res.on('data', function (chunk) {
         chunks.push(chunk);
       });
-      
+
       res.on('end', function () {
         try {
           const body = Buffer.concat(chunks);
@@ -52,7 +52,7 @@ router.get('/', async (req, res) => {
     const { limit = 20, offset = 0 } = req.query;
     const path = `/exercises?limit=${limit}&offset=${offset}`;
     const data = await makeAPIRequest(path);
-    
+
     res.json({
       success: true,
       data: data,
@@ -77,7 +77,7 @@ router.get('/bodyPart/:bodyPart', async (req, res) => {
     const { limit = 20, offset = 0 } = req.query;
     const path = `/exercises/bodyPart/${encodeURIComponent(bodyPart)}?limit=${limit}&offset=${offset}`;
     const data = await makeAPIRequest(path);
-    
+
     res.json({
       success: true,
       bodyPart: bodyPart,
@@ -98,7 +98,7 @@ router.get('/bodyPart/list', async (req, res) => {
   try {
     const path = '/exercises/bodyPartList';
     const data = await makeAPIRequest(path);
-    
+
     res.json({
       success: true,
       data: data,
@@ -118,7 +118,7 @@ router.get('/equipment/list', async (req, res) => {
   try {
     const path = '/exercises/equipmentList';
     const data = await makeAPIRequest(path);
-    
+
     res.json({
       success: true,
       data: data,
@@ -140,7 +140,10 @@ router.get('/equipment/:type', async (req, res) => {
     const { limit = 20, offset = 0 } = req.query;
     const path = `/exercises/equipment/${encodeURIComponent(type)}?limit=${limit}&offset=${offset}`;
     const data = await makeAPIRequest(path);
-    
+
+    // console.log(data);
+
+
     res.json({
       success: true,
       equipment: type,
@@ -161,7 +164,7 @@ router.get('/target/list', async (req, res) => {
   try {
     const path = '/exercises/targetList';
     const data = await makeAPIRequest(path);
-    
+
     res.json({
       success: true,
       data: data,
@@ -183,7 +186,8 @@ router.get('/target/:target', async (req, res) => {
     const { limit = 20, offset = 0 } = req.query;
     const path = `/exercises/target/${encodeURIComponent(target)}?limit=${limit}&offset=${offset}`;
     const data = await makeAPIRequest(path);
-    
+    // console.log(data);
+
     res.json({
       success: true,
       target: target,
@@ -205,7 +209,7 @@ router.get('/name/:name', async (req, res) => {
     const { name } = req.params;
     const path = `/exercises/name/${encodeURIComponent(name)}`;
     const data = await makeAPIRequest(path);
-    
+
     res.json({
       success: true,
       data: data
@@ -225,7 +229,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params;
     const path = `/exercises/exercise/${id}`;
     const data = await makeAPIRequest(path);
-    
+
     res.json({
       success: true,
       data: data
@@ -244,7 +248,7 @@ router.get('/misc/status', async (req, res) => {
   try {
     const path = '/status';
     const data = await makeAPIRequest(path);
-    
+
     res.json({
       success: true,
       status: 'API is working',

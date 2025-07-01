@@ -216,6 +216,7 @@ export default function ProfilePage() {
                         <Text style={{ fontSize: 20, color: '#e7e7e7' }}>{user?.emailAddresses[0].emailAddress}</Text>
                     </View>
                 </View>
+                
                 <View>
                     <Text style={styles.textNormal}>Health details</Text>
                     {loading && <ActivityIndicator size={30} style={{ marginVertical: 10 }} />}
@@ -241,12 +242,12 @@ export default function ProfilePage() {
                         }
                     </View>
                 </View>
-                <View style={{ marginVertical: 10 }}>
-                    <Pressable onPress={() => router.push('/(tabs)/edithealth')} style={styles.editHealthButton} android_ripple={{ color: '#1A237E' }}>
+                {!loading && <View style={{ marginVertical: 10 }}>
+                    <Pressable onPress={() => router.push('/profile/edithealth')} style={styles.editHealthButton} android_ripple={{ color: '#1A237E' }}>
                         <MaterialCommunityIcons name='pen-plus' size={22} color={'rgb(200, 18, 18)'} />
                         <Text style={[styles.textNormal, { fontSize: 18 }]}>{fetchedData ? "Edit" : "Add"} health details</Text>
                     </Pressable>
-                </View>
+                </View>}
             </ScrollView>
         </SafeAreaView>
 

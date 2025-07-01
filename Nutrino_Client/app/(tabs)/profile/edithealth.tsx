@@ -159,11 +159,13 @@ export default function ProfilePage() {
     };
 
     // fill fields with available values
+    const [loading, setLoading] = useState(false);
     const [fetchedData, setFetchedData] = useState<Record<string, any> | null>(null);
     useEffect(() => {
         const fetchData = async () => {
             if (!clerkId) return;
             try {
+                setLoading(true);
                 await axiosInsatance.get(`/v1/healthstatus/healthprofile/${clerkId}`)
                     .then((res) => {
                         console.log(res.data.data);
@@ -174,6 +176,7 @@ export default function ProfilePage() {
                     console.error("Report error: ", error.response);
                 }
             }
+            setLoading(false);
         };
         fetchData();
     }, [clerkId, isFocused]);
@@ -330,6 +333,13 @@ export default function ProfilePage() {
                         </Pressable>
                     </View>
                 </ScrollView>
+                {loading &&
+                    <View style={styles.loadingBack}>
+                        <View style={styles.loadingBox}>
+                            <ActivityIndicator size={20} />
+                            <Text>Loading Meals...</Text>
+                        </View>
+                    </View>}
             </KeyboardAvoidingView>
         </SafeAreaView>
 
@@ -492,5 +502,24 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgb(25, 225, 128)',
         padding: 12,
         borderRadius: 20
+    },
+    loadingBack: {
+        width: '100%',
+        height: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'absolute',
+        top: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.2)'
+    },
+    loadingBox: {
+        width: `60%`,
+        height: 40,
+        backgroundColor: '#ffff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 10,
+        flexDirection: 'row',
+        gap: 5
     }
 });

@@ -212,7 +212,7 @@ export default function MealPlanningScreen() {
 const DayPlanCard = ({ plan }: { plan: Record<string, any> | null }) => {
   const handleMealPress = () => {
     if (!plan?.day) return;
-    router.push({ pathname: '/(tabs)/dailyMealPlan', params: { day: plan.day } })
+    router.push({ pathname: '/mealplanning/dailyMealPlan', params: { day: plan.day } })
   }
   return (
     plan ?
