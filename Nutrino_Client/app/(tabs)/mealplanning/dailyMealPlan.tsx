@@ -7,84 +7,120 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Dimensions, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Easing, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
-const nodeCount = 8;
+const PARTICLE_COUNT = 25;
 
 export default function DailyMealPlanPage() {
-    const [nodePositions, setNodePositions] = useState<Array<Record<string, any>>>([]);
-    const nodeAnimations = useRef(Array(nodeCount).fill(undefined).map(() => ({
-        opacity: new Animated.Value(0),
-        scale: new Animated.Value(0.5),
-        position: new Animated.ValueXY()
-    }))).current;
+    const [particlePositions, setParticlePositions] = useState<Array<any>>([]);
+    const headerAnimation = useRef(new Animated.Value(0)).current;
+    const [isLoaded, setIsLoaded] = useState(false);
+    const particleAnimations = useRef(
+        Array(PARTICLE_COUNT).fill(null).map(() => ({
+            opacity: new Animated.Value(0),
+            scale: new Animated.Value(0),
+            rotate: new Animated.Value(0),
+            position: new Animated.ValueXY(),
+            float: new Animated.Value(0)
+        }))
+    ).current;
 
+    // Initialize animations
     useEffect(() => {
-        const initialNodePositions = Array(nodeCount).fill(undefined).map(() => {
-            const centerX = width / 2;
-            const centerY = height / 2;
-            const radius = Math.min(width, height) * 0.25;
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * radius;
-
+        // Create particle positions
+        const particles = Array(PARTICLE_COUNT).fill(null).map((_, index) => {
+            const isLarge = index < 8;
             return {
-                x: centerX + Math.cos(angle) * distance,
-                y: centerY + Math.sin(angle) * distance,
-                size: Math.random() * 70 + 40,
-                delay: Math.random() * 2000,
-                duration: Math.random() * 3000 + 3000,
-                color: `rgba(${Math.floor(Math.random() * 100 + 155)}, ${Math.floor(Math.random() * 150 + 100)}, ${Math.floor(Math.random() * 100 + 155)}, 0.6)`
+                x: Math.random() * width,
+                y: Math.random() * height,
+                size: isLarge ? Math.random() * 120 + 80 : Math.random() * 60 + 20,
+                speed: Math.random() * 0.5 + 0.2,
+                direction: Math.random() * Math.PI * 2,
+                color: [
+                    'rgba(100, 255, 218, 0.1)',
+                    'rgba(139, 69, 255, 0.15)',
+                    'rgba(255, 107, 107, 0.1)',
+                    'rgba(255, 183, 77, 0.12)',
+                    'rgba(79, 195, 247, 0.1)'
+                ][Math.floor(Math.random() * 5)],
+                glowColor: [
+                    '#64FFDA',
+                    '#8B45FF',
+                    '#FF6B6B',
+                    '#FFB74D',
+                    '#4FC3F7'
+                ][Math.floor(Math.random() * 5)]
             };
         });
-        setNodePositions(initialNodePositions);
 
-        nodeAnimations.forEach((anim, index) => {
-            const { x, y, delay, duration } = initialNodePositions[index];
-            const destX = x + (Math.random() - 0.5) * width * 0.15;
-            const destY = y + (Math.random() - 0.5) * height * 0.15;
+        setParticlePositions(particles);
 
-            anim.position.setValue({ x, y });
+        // Animate header entrance
+        Animated.timing(headerAnimation, {
+            toValue: 1,
+            duration: 1200,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+        }).start();
 
-            Animated.sequence([
-                Animated.delay(delay),
-                Animated.parallel([
-                    Animated.timing(anim.opacity, {
-                        toValue: 0.3,
-                        duration: duration * 0.3,
-                        easing: Easing.out(Easing.cubic),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(anim.scale, {
+        // Animate particles
+        particleAnimations.forEach((anim, index) => {
+            const particle = particles[index];
+            if (!particle) return;
+
+            anim.position.setValue({ x: particle.x, y: particle.y });
+
+            Animated.parallel([
+                Animated.timing(anim.opacity, {
+                    toValue: 0.8,
+                    duration: 2000 + Math.random() * 1000,
+                    easing: Easing.out(Easing.quad),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(anim.scale, {
+                    toValue: 1,
+                    duration: 1500 + Math.random() * 1000,
+                    easing: Easing.out(Easing.back(1.2)),
+                    useNativeDriver: true,
+                }),
+                Animated.loop(
+                    Animated.timing(anim.rotate, {
                         toValue: 1,
-                        duration: duration * 0.4,
-                        easing: Easing.out(Easing.elastic(1)),
+                        duration: 20000 + Math.random() * 10000,
+                        easing: Easing.linear,
                         useNativeDriver: true,
                     })
-                ]),
-                Animated.loop(Animated.sequence([
-                    Animated.timing(anim.position, {
-                        toValue: { x: destX, y: destY },
-                        duration,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(anim.position, {
-                        toValue: { x, y },
-                        duration,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    })
-                ]))
+                ),
+                Animated.loop(
+                    Animated.sequence([
+                        Animated.timing(anim.float, {
+                            toValue: 1,
+                            duration: 3000 + Math.random() * 2000,
+                            easing: Easing.inOut(Easing.sin),
+                            useNativeDriver: true,
+                        }),
+                        Animated.timing(anim.float, {
+                            toValue: 0,
+                            duration: 3000 + Math.random() * 2000,
+                            easing: Easing.inOut(Easing.sin),
+                            useNativeDriver: true,
+                        })
+                    ])
+                )
             ]).start();
         });
 
-        return () => nodeAnimations.forEach(anim => {
-            anim.opacity.stopAnimation();
-            anim.scale.stopAnimation();
-            anim.position.stopAnimation();
-        });
+        return () => {
+            particleAnimations.forEach(anim => {
+                anim.opacity.stopAnimation();
+                anim.scale.stopAnimation();
+                anim.rotate.stopAnimation();
+                anim.position.stopAnimation();
+                anim.float.stopAnimation();
+            });
+        };
     }, []);
 
     const handleBackPress = () => {
@@ -129,115 +165,148 @@ export default function DailyMealPlanPage() {
     }, [day]);
 
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.backgroundContainer}>
-                <LinearGradient
-                    colors={['#0D1421', '#1A237E', '#000051']}
-                    style={styles.backgroundGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                />
-                {nodePositions.map((node, index) => (
-                    <Animated.View
-                        key={`node-${index}`}
-                        style={{
-                            position: 'absolute',
-                            width: node.size,
-                            height: node.size,
-                            borderRadius: node.size / 2,
-                            backgroundColor: node.color,
-                            transform: [
-                                { translateX: Animated.subtract(nodeAnimations[index].position.x, node.size / 2) },
-                                { translateY: Animated.subtract(nodeAnimations[index].position.y, node.size / 2) },
-                                { scale: nodeAnimations[index].scale }
-                            ],
-                            opacity: nodeAnimations[index].opacity,
-                        }}
+        <>
+            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+            <SafeAreaView style={styles.container}>
+                {/* Dynamic Background */}
+                <View style={styles.backgroundContainer}>
+                    <LinearGradient
+                        colors={['#0A0E1A', '#1A1B3A', '#2D1B69', '#0F0F23']}
+                        style={styles.backgroundGradient}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
                     />
-                ))}
-            </View>
-            <ScrollView contentContainerStyle={styles.scrollViewContent}>
-                <View style={styles.headerContainer}>
-                    <Pressable style={styles.backButton} onPress={handleBackPress}>
-                        <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
-                    </Pressable>
-                    <Text style={styles.title}>Your Meal plan</Text>
-                </View>
 
-                {(mealPlan && !loading) && (
-                    <View>
-                        <Text style={styles.sectionTitle}>{mealPlan.dayName}</Text>
-                        <View style={{
-                            backgroundColor: 'rgba(255,255,255,0.07)',
-                            borderRadius: 16,
-                            padding: 16,
-                            marginBottom: 20,
-                            flexDirection: 'row',
-                            justifyContent: 'space-between'
-                        }}>
-                            <View style={{ alignItems: 'center' }}>
-                                <MaterialCommunityIcons name="fire" size={22} color="#FFD54F" />
-                                <Text style={{ color: '#fff', fontWeight: '600' }}>Calories</Text>
-                                <Text style={{ color: '#FFD54F', fontSize: 18 }}>{mealPlan.totalCalories} kcal</Text>
+                    {/* Animated Particles */}
+                    {particlePositions.map((particle, index) => (
+                        <Animated.View
+                            key={`particle-${index}`}
+                            style={[
+                                styles.particle,
+                                {
+                                    width: particle.size,
+                                    height: particle.size,
+                                    backgroundColor: particle.color,
+                                    shadowColor: particle.glowColor,
+                                    transform: [
+                                        {
+                                            translateX: Animated.add(
+                                                particleAnimations[index].position.x,
+                                                Animated.multiply(
+                                                    particleAnimations[index].float,
+                                                    20
+                                                )
+                                            )
+                                        },
+                                        {
+                                            translateY: Animated.add(
+                                                particleAnimations[index].position.y,
+                                                Animated.multiply(
+                                                    particleAnimations[index].float,
+                                                    30
+                                                )
+                                            )
+                                        },
+                                        { scale: particleAnimations[index].scale },
+                                        {
+                                            rotate: particleAnimations[index].rotate.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: ['0deg', '360deg']
+                                            })
+                                        }
+                                    ],
+                                    opacity: particleAnimations[index].opacity,
+                                }
+                            ]}
+                        />
+                    ))}
+                </View>
+                <ScrollView
+                    contentContainerStyle={styles.scrollContent}
+                    showsVerticalScrollIndicator={false}
+                    bounces={true}
+                >
+                    <View style={styles.headerContainer}>
+                        <Pressable style={styles.backButton} onPress={handleBackPress}>
+                            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+                        </Pressable>
+                        <Text style={styles.title}>Your Meal plan</Text>
+                    </View>
+
+                    {(mealPlan && !loading) && (
+                        <View>
+                            <Text style={styles.sectionTitle}>{mealPlan.dayName}</Text>
+                            <View style={{
+                                backgroundColor: 'rgba(255,255,255,0.07)',
+                                borderRadius: 16,
+                                padding: 16,
+                                marginBottom: 20,
+                                flexDirection: 'row',
+                                justifyContent: 'space-between'
+                            }}>
+                                <View style={{ alignItems: 'center' }}>
+                                    <MaterialCommunityIcons name="fire" size={22} color="#FFD54F" />
+                                    <Text style={{ color: '#fff', fontWeight: '600' }}>Calories</Text>
+                                    <Text style={{ color: '#FFD54F', fontSize: 18 }}>{mealPlan.totalCalories} kcal</Text>
+                                </View>
+                                <View style={{ alignItems: 'center' }}>
+                                    <MaterialCommunityIcons name="food-drumstick" size={22} color="#81C784" />
+                                    <Text style={{ color: '#fff', fontWeight: '600' }}>Protein</Text>
+                                    <Text style={{ color: '#81C784', fontSize: 18 }}>{mealPlan.totalProtein}g</Text>
+                                </View>
+                                <View style={{ alignItems: 'center' }}>
+                                    <MaterialCommunityIcons name="corn" size={22} color="#4FC3F7" />
+                                    <Text style={{ color: '#fff', fontWeight: '600' }}>Carbs</Text>
+                                    <Text style={{ color: '#4FC3F7', fontSize: 18 }}>{mealPlan.totalCarbs}g</Text>
+                                </View>
+                                <View style={{ alignItems: 'center' }}>
+                                    <MaterialCommunityIcons name="peanut" size={22} color="#FF8A65" />
+                                    <Text style={{ color: '#fff', fontWeight: '600' }}>Fat</Text>
+                                    <Text style={{ color: '#FF8A65', fontSize: 18 }}>{mealPlan.totalFat}g</Text>
+                                </View>
                             </View>
-                            <View style={{ alignItems: 'center' }}>
-                                <MaterialCommunityIcons name="food-drumstick" size={22} color="#81C784" />
-                                <Text style={{ color: '#fff', fontWeight: '600' }}>Protein</Text>
-                                <Text style={{ color: '#81C784', fontSize: 18 }}>{mealPlan.totalProtein}g</Text>
-                            </View>
-                            <View style={{ alignItems: 'center' }}>
-                                <MaterialCommunityIcons name="corn" size={22} color="#4FC3F7" />
-                                <Text style={{ color: '#fff', fontWeight: '600' }}>Carbs</Text>
-                                <Text style={{ color: '#4FC3F7', fontSize: 18 }}>{mealPlan.totalCarbs}g</Text>
-                            </View>
-                            <View style={{ alignItems: 'center' }}>
-                                <MaterialCommunityIcons name="peanut" size={22} color="#FF8A65" />
-                                <Text style={{ color: '#fff', fontWeight: '600' }}>Fat</Text>
-                                <Text style={{ color: '#FF8A65', fontSize: 18 }}>{mealPlan.totalFat}g</Text>
-                            </View>
-                        </View>
-                        <View style={{
-                            backgroundColor: 'rgba(255,255,255,0.04)',
-                            borderRadius: 12,
-                            padding: 12,
-                            marginBottom: 18,
-                            flexDirection: 'row',
-                            alignItems: 'center'
-                        }}>
-                            <MaterialCommunityIcons name="cup-water" size={22} color="#4FC3F7" />
-                            <Text style={{ color: '#fff', marginLeft: 8 }}>
-                                Water Intake: <Text style={{ color: '#4FC3F7', fontWeight: 'bold' }}>{mealPlan.waterIntake} ml</Text>
-                            </Text>
-                        </View>
-                        {mealPlan.notes ? (
                             <View style={{
                                 backgroundColor: 'rgba(255,255,255,0.04)',
                                 borderRadius: 12,
                                 padding: 12,
                                 marginBottom: 18,
+                                flexDirection: 'row',
+                                alignItems: 'center'
                             }}>
-                                <Text style={{ color: '#fff', fontStyle: 'italic' }}>{mealPlan.notes}</Text>
+                                <MaterialCommunityIcons name="cup-water" size={22} color="#4FC3F7" />
+                                <Text style={{ color: '#fff', marginLeft: 8 }}>
+                                    Water Intake: <Text style={{ color: '#4FC3F7', fontWeight: 'bold' }}>{mealPlan.waterIntake} ml</Text>
+                                </Text>
                             </View>
-                        ) : null}
-                        <Text style={[styles.sectionTitle, { marginTop: 10 }]}>Meals</Text>
-                        {mealPlan.meals?.length ? mealPlan.meals.map((meal: any) => (
-                            <MealCard key={meal.id} meal={meal} />
-                        )) : (
-                            <Text style={{ color: '#fff', fontStyle: 'italic', marginTop: 10 }}>No meals found.</Text>
-                        )}
-                    </View>
-                )}
-                {(!mealPlan && !loading) && <Text>No meal plan found!</Text>}
-            </ScrollView>
-            {loading &&
-                <View style={styles.loadingBack}>
-                    <View style={styles.loadingBox}>
-                        <ActivityIndicator size={20} />
-                        <Text>Loading Meals...</Text>
-                    </View>
-                </View>}
-        </SafeAreaView>
-
+                            {mealPlan.notes ? (
+                                <View style={{
+                                    backgroundColor: 'rgba(255,255,255,0.04)',
+                                    borderRadius: 12,
+                                    padding: 12,
+                                    marginBottom: 18,
+                                }}>
+                                    <Text style={{ color: '#fff', fontStyle: 'italic' }}>{mealPlan.notes}</Text>
+                                </View>
+                            ) : null}
+                            <Text style={[styles.sectionTitle, { marginTop: 10 }]}>Meals</Text>
+                            {mealPlan.meals?.length ? mealPlan.meals.map((meal: any) => (
+                                <MealCard key={meal.id} meal={meal} />
+                            )) : (
+                                <Text style={{ color: '#fff', fontStyle: 'italic', marginTop: 10 }}>No meals found.</Text>
+                            )}
+                        </View>
+                    )}
+                    {(!mealPlan && !loading) && <Text>No meal plan found!</Text>}
+                </ScrollView>
+                {loading &&
+                    <View style={styles.loadingBack}>
+                        <View style={styles.loadingBox}>
+                            <ActivityIndicator size={20} />
+                            <Text>Loading Meals...</Text>
+                        </View>
+                    </View>}
+            </SafeAreaView>
+        </>
     )
 };
 
@@ -345,19 +414,33 @@ function MealCard({ meal }: { meal: any }) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0D1421'
+        backgroundColor: '#0A0E1A',
     },
     backgroundContainer: {
         position: 'absolute',
-        width: 400,
-        height: 785,
+        width: '100%',
+        height: '100%',
     },
     backgroundGradient: {
-        flex: 1
+        flex: 1,
     },
-    scrollViewContent: {
-        padding: 20,
-        paddingBottom: 40
+    particle: {
+        position: 'absolute',
+        borderRadius: 1000,
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 0 },
+    },
+    meshOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+    },
+    scrollContent: {
+        paddingHorizontal: 20,
+        paddingTop: 20,
     },
     headerContainer: {
         alignItems: 'center',
