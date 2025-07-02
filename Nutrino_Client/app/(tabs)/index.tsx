@@ -548,19 +548,19 @@ const styles = StyleSheet.create({
   
   headerContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 20,
   },
   
   timeContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   
   timeText: {
     fontSize: 28,
-    fontWeight: '300',
+    fontWeight: '500',
     color: '#FFFFFF',
-    letterSpacing: 2,
+    letterSpacing: 6,
   },
   
   greetingText: {
@@ -572,7 +572,7 @@ const styles = StyleSheet.create({
   
   titleContainer: {
     alignItems: 'center',
-    marginBottom: 25,
+    marginBottom: 20,
   },
   
   titleGradient: {
@@ -639,7 +639,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 30,
   },
   
   featureWrapper: {
@@ -675,9 +674,9 @@ const styles = StyleSheet.create({
   },
   
   cardContent: {
-    backgroundColor: 'rgba(10, 14, 26, 0.9)',
-    borderRadius: 22,
-    padding: 20,
+    backgroundColor: 'rgba(10, 14, 26, 0.7)',
+    borderRadius: 30,
+    padding: 10,
     alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
@@ -686,14 +685,14 @@ const styles = StyleSheet.create({
   
   iconContainer: {
     borderRadius: 16,
-    padding: 12,
-    marginBottom: 12,
+    padding: 8,
+    marginBottom: 8,
     position: 'relative',
   },
   
   featuredIconContainer: {
-    padding: 16,
-    marginBottom: 16,
+    padding: 8,
+    marginBottom: 8,
   },
   
   iconPulse: {
@@ -732,72 +731,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  
-  particleContainer: {
-    position: 'absolute',
-    top: 10,
-    left: 0,
-    right: 0,
-    height: 20,
-  },
-  
-  particleEmoji: {
-    position: 'absolute',
-    fontSize: 12,
-    opacity: 0.6,
-  },
-  
-  cardBorder: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 24,
-    borderWidth: 1,
-  },
-  
-  shimmer: {
-    position: 'absolute',
-    top: 0,
-    left: -100,
-    right: -100,
-    bottom: 0,
-    opacity: 0.1,
-  },
-  
-  quickActionsContainer: {
-    marginBottom: 20,
-  },
-  
-  quickActionsTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 15,
-    letterSpacing: 0.5,
-  },
-  
-  quickActionsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  
-  quickActionButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  
-  quickActionLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 8,
-    letterSpacing: 0.3,
-  },
+
 });
