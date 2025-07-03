@@ -366,18 +366,23 @@ export default function ChatbotScreen() {
 
     return (
       <View style={styles.sourcesContainer}>
-        <Text style={styles.sourcesTitle}>Sources:</Text>
-        {sources.map((source, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.sourceItem}
-            onPress={() => Linking.openURL(source.url)}
-          >
-            <Text style={styles.sourceText} numberOfLines={1}>
-              {source.title || 'Untitled source'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <Text style={styles.sourcesTitle}>Sources</Text>
+        <View style={styles.sourcesGrid}>
+          {sources.map((source, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.sourceItem}
+              onPress={() => Linking.openURL(source.url)}
+            >
+              <View style={styles.sourceIcon}>
+                <MaterialCommunityIcons name="link-variant" size={12} color="#64B5F6" />
+              </View>
+              <Text style={styles.sourceText} numberOfLines={1}>
+                {source.title || 'View Source'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
     );
   };
@@ -387,7 +392,10 @@ export default function ChatbotScreen() {
 
     return (
       <View style={styles.explanationContainer}>
-        <Text style={styles.explanationTitle}>More Details:</Text>
+        <View style={styles.explanationHeader}>
+          <MaterialCommunityIcons name="information-outline" size={14} color="#FFB74D" />
+          <Text style={styles.explanationTitle}>Additional Details</Text>
+        </View>
         <Text style={styles.explanationText}>{explanation}</Text>
       </View>
     );
@@ -457,10 +465,12 @@ export default function ChatbotScreen() {
             }}
             style={styles.backButton}
           >
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#57cbff" />
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
           </Pressable>
-          <Text style={styles.headerTitle}>Nutrino Chat</Text>
-          <MaterialCommunityIcons name="robot-outline" size={24} color="#00E676" />
+          <Text style={styles.headerTitle}>Nutrino AI Chatbot</Text>
+          <View style={styles.statusIndicator}>
+            <View style={styles.onlineDot} />
+          </View>
         </View>
 
         <KeyboardAvoidingView
@@ -497,86 +507,51 @@ export default function ChatbotScreen() {
               >
                 {message.sender === 'bot' && index === 0 ? (
                   <View style={styles.welcomeCard}>
-                    <LinearGradient
-                      colors={['#0a402e', '#072622']}
-                      style={styles.welcomeGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    >
-                      <View style={styles.welcomeHeader}>
-                        <View style={styles.welcomeAvatarContainer}>
-                          <View style={styles.welcomeAvatarInner}>
-                            <MaterialCommunityIcons
-                              name="robot-happy"
-                              size={36}
-                              color="#23cc96"
-                            />
-                          </View>
-                        </View>
-                        <View style={styles.welcomeTitleContainer}>
-                          <Text style={styles.welcomeTitle}>Welcome to Nutrino</Text>
-                          <View style={styles.welcomeSubtitleContainer}>
-                            <View style={styles.onlineDot} />
-                            <Text style={styles.welcomeSubtitle}>AI Health Assistant</Text>
-                          </View>
-                        </View>
+                    <View style={styles.welcomeHeader}>
+                      <View style={styles.welcomeAvatar}>
+                        <MaterialCommunityIcons name="robot-happy" size={28} color="#00E676" />
                       </View>
-
-                      <Text style={styles.welcomeText}>
-                        {message.text}
-                      </Text>
-
-                      <View style={styles.welcomeDivider} />
-
-                      <View style={styles.welcomeTips}>
-                        <View style={styles.tipItem}>
-                          <View style={styles.tipIconContainer}>
-                            <MaterialCommunityIcons name="food-apple-outline" size={18} color="#FFD700" />
-                          </View>
-                          <Text style={styles.tipText}>Personalized nutrition advice</Text>
-                        </View>
-                        <View style={styles.tipItem}>
-                          <View style={styles.tipIconContainer}>
-                            <MaterialCommunityIcons name="lightbulb-on-outline" size={18} color="#76FF03" />
-                          </View>
-                          <Text style={styles.tipText}>Dietary recommendations based on your needs</Text>
-                        </View>
-                        <View style={styles.tipItem}>
-                          <View style={styles.tipIconContainer}>
-                            <MaterialCommunityIcons name="chart-line-variant" size={18} color="#FF9800" />
-                          </View>
-                          <Text style={styles.tipText}>Health tracking and progress monitoring</Text>
-                        </View>
+                      <View style={styles.welcomeInfo}>
+                        <Text style={styles.welcomeTitle}>Nutrino</Text>
+                        <Text style={styles.welcomeSubtitle}>AI Health Assistant</Text>
                       </View>
-                    </LinearGradient>
+                    </View>
+                    
+                    <Text style={styles.welcomeMessage}>{message.text}</Text>
+                    
+                    <View style={styles.capabilitiesGrid}>
+                      <View style={styles.capabilityItem}>
+                        <MaterialCommunityIcons name="food-apple" size={16} color="#00E676" />
+                        <Text style={styles.capabilityText}>Nutrition</Text>
+                      </View>
+                      <View style={styles.capabilityItem}>
+                        <MaterialCommunityIcons name="heart-pulse" size={16} color="#FF6B6B" />
+                        <Text style={styles.capabilityText}>Health</Text>
+                      </View>
+                      <View style={styles.capabilityItem}>
+                        <MaterialCommunityIcons name="chart-line" size={16} color="#FFB74D" />
+                        <Text style={styles.capabilityText}>Tracking</Text>
+                      </View>
+                    </View>
                   </View>
                 ) : (
                   <View style={[
                     styles.messageBubble,
                     message.sender === 'user' ? styles.userBubble : styles.botBubble,
                   ]}>
-                    <LinearGradient
-                      colors={message.sender === 'user'
-                        ? ['#173E19', '#0D2F10']
-                        : ['#062350', '#0C3B69']}
-                      style={styles.messageGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    >
-                      <Text style={styles.messageText}>{message.text}</Text>
-                      {message.sender === 'bot' && showExplanation(message.explanation)}
-                      {message.sender === 'bot' && showSources(message.sources)}
-                      <View style={styles.messageFooter}>
-                        <Text style={styles.messageTime}>
-                          {formatTime(message.timestamp)}
-                        </Text>
-                        {message.sender === 'bot' && (
-                          <TouchableOpacity style={styles.actionButton}>
-                            <Ionicons name="volume-high" size={16} color="#23cc96" />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    </LinearGradient>
+                    <Text style={styles.messageText}>{message.text}</Text>
+                    {message.sender === 'bot' && showExplanation(message.explanation)}
+                    {message.sender === 'bot' && showSources(message.sources)}
+                    <View style={styles.messageFooter}>
+                      <Text style={styles.messageTime}>
+                        {formatTime(message.timestamp)}
+                      </Text>
+                      {message.sender === 'bot' && (
+                        <TouchableOpacity style={styles.actionButton}>
+                          <MaterialCommunityIcons name="volume-high" size={14} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
                 )}
               </Animated.View>
@@ -584,28 +559,11 @@ export default function ChatbotScreen() {
 
             {isLoading && (
               <View style={styles.loadingContainer}>
-                <BlurView intensity={80} style={styles.loadingBlur} tint="dark">
-                  <View style={styles.typingIndicator}>
-                    <Animated.View
-                      style={[
-                        styles.typingDot,
-                        { opacity: typingDot1 }
-                      ]}
-                    />
-                    <Animated.View
-                      style={[
-                        styles.typingDot,
-                        { opacity: typingDot2 }
-                      ]}
-                    />
-                    <Animated.View
-                      style={[
-                        styles.typingDot,
-                        { opacity: typingDot3 }
-                      ]}
-                    />
-                  </View>
-                </BlurView>
+                <View style={styles.typingIndicator}>
+                  <Animated.View style={[styles.typingDot, { opacity: typingDot1 }]} />
+                  <Animated.View style={[styles.typingDot, { opacity: typingDot2 }]} />
+                  <Animated.View style={[styles.typingDot, { opacity: typingDot3 }]} />
+                </View>
               </View>
             )}
           </ScrollView>
@@ -631,20 +589,11 @@ export default function ChatbotScreen() {
               style={styles.scrollButtonInner}
               activeOpacity={0.8}
             >
-              <BlurView intensity={90} style={styles.scrollButtonBlur} tint="dark">
-                <LinearGradient
-                  colors={isScrollingUp ? ['#3b82f6', '#1d4ed8'] : ['#1c855c', '#16a34a']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.scrollButtonGradient}
-                />
-                <MaterialCommunityIcons
-                  name={isScrollingUp ? "arrow-up" : "arrow-down"}
-                  size={28}
-                  color="#FFF"
-                  style={styles.scrollButtonIcon}
-                />
-              </BlurView>
+              <MaterialCommunityIcons
+                name={isScrollingUp ? "arrow-up" : "arrow-down"}
+                size={20}
+                color="#FFFFFF"
+              />
             </TouchableOpacity>
           </Animated.View>
 
@@ -653,8 +602,8 @@ export default function ChatbotScreen() {
               style={styles.input}
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Ask me about nutrition, health..."
-              placeholderTextColor="rgba(255,255,255,0.5)"
+              placeholder="Ask about nutrition, health..."
+              placeholderTextColor="rgba(255,255,255,0.4)"
               multiline
             />
             <TouchableOpacity
@@ -662,15 +611,15 @@ export default function ChatbotScreen() {
               style={[
                 styles.sendButton,
                 {
-                  backgroundColor: inputText.trim() ? '#00E676' : '#2D3748'
+                  backgroundColor: inputText.trim() ? '#11a899' : 'rgba(255,255,255,0.1)'
                 }
               ]}
               disabled={!inputText.trim()}
             >
               <MaterialCommunityIcons
                 name={inputText.trim() ? "send" : "microphone"}
-                size={24}
-                color="white"
+                size={20}
+                color={inputText.trim() ? '#FFFFFF' : 'rgba(17, 168, 153, 1)'}
               />
             </TouchableOpacity>
           </View>
@@ -690,53 +639,51 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  backgroundGradient: {
-    flex: 1,
-  },
-  particle: {
-    position: 'absolute',
+
+  particle: { 
     borderRadius: 1000,
     shadowOpacity: 0.3,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
   },
-  meshOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    paddingTop: 8,
-    backgroundColor: '#03302c',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(30, 41, 59, 0.2)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   backButton: {
     padding: 8,
-    borderRadius: 20,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#14d9bb',
+    letterSpacing: 0.9,
+  },
+  statusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  onlineDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 10,
+    padding: 8,
+    backgroundColor: '#14d9bb',
   },
   keyboardAvoidingView: {
     flex: 1,
   },
-  messagesContainer: {
-    padding: 16,
-    paddingBottom: 80,
+  scrollContent: {
+    paddingHorizontal: 10,
+    paddingVertical: 10,
   },
   messageContainer: {
     marginBottom: 8,
@@ -749,23 +696,29 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   messageBubble: {
-    borderRadius: 16,
-    overflow: 'hidden',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   botBubble: {
-    borderColor: '#1f2a30',
+    backgroundColor: 'rgba(20, 217, 187, 0.2)',
+    
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth:2,
   },
   userBubble: {
-    borderColor: '#1f2a30',
-  },
-  messageGradient: {
-    padding: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderColor: 'rgba(0, 230, 118, 0.2)',
+    borderWidth:2,
   },
   messageText: {
     fontSize: 16,
     color: '#FFFFFF',
     lineHeight: 22,
+    fontWeight: '400',
   },
   messageFooter: {
     flexDirection: 'row',
@@ -774,232 +727,153 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   messageTime: {
-    fontSize: 12,
-    color: '#B0BEC5',
-    opacity: 0.7,
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontWeight: '400',
   },
   actionButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(3, 48, 44, 0.7)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(35, 204, 150, 0.3)',
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 12,
-    paddingBottom: 24,
-    backgroundColor: '#031A18',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(30, 41, 59, 0.4)',
+    paddingHorizontal: 10,
+    marginBottom:8,
   },
   input: {
     flex: 1,
-    minHeight: 48,
+    minHeight: 44,
     maxHeight: 120,
-    backgroundColor: '#2a3942',
-    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     marginRight: 12,
-    borderWidth: 1,
-    borderColor: '#1f2a30',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   sendButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-    elevation: 3,
   },
   scrollButton: {
     position: 'absolute',
-    right: 16,
-    bottom: 120,
-    width: 36,
-    height: 36,
+    right: 20,
+    bottom: 100,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     zIndex: 10,
-    borderRadius: 18,
-    backgroundColor: 'rgba(3, 48, 44, 0.7)',
-    borderWidth: 0.7,
-    borderColor: 'rgba(35, 204, 150, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
   scrollButtonInner: {
     width: '100%',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(35, 204, 150, 0.3)',
-  },
-  scrollButtonBlur: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  scrollButtonGradient: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    borderRadius: 20,
-    opacity: 0.6,
-  },
-  scrollButtonIcon: {
-    position: 'relative',
-    zIndex: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   loadingContainer: {
     alignSelf: 'flex-start',
-    marginBottom: 12,
-  },
-  loadingBlur: {
-    borderRadius: 18,
-    overflow: 'hidden',
-    padding: 14,
+    marginBottom: 16,
   },
   typingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   typingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#23cc96',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#14d9bb',
     marginHorizontal: 2,
   },
   welcomeCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#202225',
-  },
-  welcomeGradient: {
-    padding: 18,
-    borderRadius: 16,
-    backgroundColor: '#23cc96',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 24,
+    padding: 10,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   welcomeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  welcomeAvatarContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  welcomeAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 230, 118, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
     borderWidth: 1,
-    borderColor: '#4752C4',
+    borderColor: 'rgba(0, 230, 118, 0.2)',
   },
-  welcomeAvatarInner: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  welcomeTitleContainer: {
+  welcomeInfo: {
     flex: 1,
   },
   welcomeTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#FFF',
-    marginBottom: 4,
-    letterSpacing: 0.3,
-  },
-  welcomeSubtitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#23cc96',
-    marginRight: 6,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 2,
   },
   welcomeSubtitle: {
-    fontSize: 12,
-    color: '#B9BBBE',
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontWeight: '400',
   },
-  welcomeText: {
-    fontSize: 16,
-    color: '#DCDDDE',
-    lineHeight: 24,
-    marginBottom: 16,
+  welcomeMessage: {
+    fontSize: 15,
+    color: '#FFFFFF',
+    lineHeight: 22,
+    marginBottom: 20,
   },
-  welcomeDivider: {
-    height: 1,
-    backgroundColor: '#40444B',
-    marginVertical: 16,
+  capabilitiesGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  welcomeTips: {
-    marginTop: 8,
-    gap: 14,
-  },
-  tipItem: {
+  capabilityItem: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  tipIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(88, 101, 242, 0.15)',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 12,
+    marginHorizontal: 4,
     borderWidth: 1,
-    borderColor: 'rgba(88, 101, 242, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  tipText: {
-    fontSize: 14,
-    color: '#DCDDDE',
-    flex: 1,
-    lineHeight: 20,
+  capabilityText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginLeft: 6,
+    fontWeight: '500',
   },
   sourcesContainer: {
-    marginTop: 10,
-    paddingTop: 10,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
