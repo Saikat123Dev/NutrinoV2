@@ -17,6 +17,7 @@ import {
   Platform 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { UpdateService } from '@/components/UpdateService';
 
 const { width, height } = Dimensions.get('window');
 const PARTICLE_COUNT = 25;
@@ -63,7 +64,10 @@ export default function HomeScreen() {
     const interval = setInterval(updateTime, 60000);
     return () => clearInterval(interval);
   }, []);
-
+   useEffect(() => {
+    // Check for updates when app starts
+    UpdateService.checkForUpdates();
+  }, []);
   // Initialize animations
   useEffect(() => {
     // Create particle positions
