@@ -7,84 +7,121 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Dimensions, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Animated, Dimensions, Easing, KeyboardAvoidingView, Platform, Pressable, ScrollView, StatusBar, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
+const PARTICLE_COUNT = 25;
 const nodeCount = 8;
 
 export default function ProfilePage() {
-    const [nodePositions, setNodePositions] = useState<Array<Record<string, any>>>([]);
-    const nodeAnimations = useRef(Array(nodeCount).fill(undefined).map(() => ({
-        opacity: new Animated.Value(0),
-        scale: new Animated.Value(0.5),
-        position: new Animated.ValueXY()
-    }))).current;
+    const [particlePositions, setParticlePositions] = useState<Array<any>>([]);
+    const headerAnimation = useRef(new Animated.Value(0)).current;
+    const [isLoaded, setIsLoaded] = useState(false);
+    const particleAnimations = useRef(
+        Array(PARTICLE_COUNT).fill(null).map(() => ({
+            opacity: new Animated.Value(0),
+            scale: new Animated.Value(0),
+            rotate: new Animated.Value(0),
+            position: new Animated.ValueXY(),
+            float: new Animated.Value(0)
+        }))
+    ).current;
 
+    // Initialize animations
     useEffect(() => {
-        const initialNodePositions = Array(nodeCount).fill(undefined).map(() => {
-            const centerX = width / 2;
-            const centerY = height / 2;
-            const radius = Math.min(width, height) * 0.25;
-            const angle = Math.random() * Math.PI * 2;
-            const distance = Math.random() * radius;
-
+        // Create particle positions
+        const particles = Array(PARTICLE_COUNT).fill(null).map((_, index) => {
+            const isLarge = index < 8;
             return {
-                x: centerX + Math.cos(angle) * distance,
-                y: centerY + Math.sin(angle) * distance,
-                size: Math.random() * 70 + 40,
-                delay: Math.random() * 2000,
-                duration: Math.random() * 3000 + 3000,
-                color: `rgba(${Math.floor(Math.random() * 100 + 155)}, ${Math.floor(Math.random() * 150 + 100)}, ${Math.floor(Math.random() * 100 + 155)}, 0.6)`
+                x: Math.random() * width,
+                y: Math.random() * height,
+                size: isLarge ? Math.random() * 120 + 80 : Math.random() * 60 + 20,
+                speed: Math.random() * 0.5 + 0.2,
+                direction: Math.random() * Math.PI * 2,
+                color: [
+                    'rgba(100, 255, 218, 0.1)',
+                    'rgba(139, 69, 255, 0.15)',
+                    'rgba(255, 107, 107, 0.1)',
+                    'rgba(255, 183, 77, 0.12)',
+                    'rgba(79, 195, 247, 0.1)'
+                ][Math.floor(Math.random() * 5)],
+                glowColor: [
+                    '#64FFDA',
+                    '#8B45FF',
+                    '#FF6B6B',
+                    '#FFB74D',
+                    '#4FC3F7'
+                ][Math.floor(Math.random() * 5)]
             };
         });
-        setNodePositions(initialNodePositions);
 
-        nodeAnimations.forEach((anim, index) => {
-            const { x, y, delay, duration } = initialNodePositions[index];
-            const destX = x + (Math.random() - 0.5) * width * 0.15;
-            const destY = y + (Math.random() - 0.5) * height * 0.15;
+        setParticlePositions(particles);
 
-            anim.position.setValue({ x, y });
+        // Animate header entrance
+        Animated.timing(headerAnimation, {
+            toValue: 1,
+            duration: 1200,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+        }).start();
 
-            Animated.sequence([
-                Animated.delay(delay),
-                Animated.parallel([
-                    Animated.timing(anim.opacity, {
-                        toValue: 0.3,
-                        duration: duration * 0.3,
-                        easing: Easing.out(Easing.cubic),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(anim.scale, {
+        // Animate particles
+        particleAnimations.forEach((anim, index) => {
+            const particle = particles[index];
+            if (!particle) return;
+
+            anim.position.setValue({ x: particle.x, y: particle.y });
+
+            Animated.parallel([
+                Animated.timing(anim.opacity, {
+                    toValue: 0.8,
+                    duration: 2000 + Math.random() * 1000,
+                    easing: Easing.out(Easing.quad),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(anim.scale, {
+                    toValue: 1,
+                    duration: 1500 + Math.random() * 1000,
+                    easing: Easing.out(Easing.back(1.2)),
+                    useNativeDriver: true,
+                }),
+                Animated.loop(
+                    Animated.timing(anim.rotate, {
                         toValue: 1,
-                        duration: duration * 0.4,
-                        easing: Easing.out(Easing.elastic(1)),
+                        duration: 20000 + Math.random() * 10000,
+                        easing: Easing.linear,
                         useNativeDriver: true,
                     })
-                ]),
-                Animated.loop(Animated.sequence([
-                    Animated.timing(anim.position, {
-                        toValue: { x: destX, y: destY },
-                        duration,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(anim.position, {
-                        toValue: { x, y },
-                        duration,
-                        easing: Easing.inOut(Easing.quad),
-                        useNativeDriver: true,
-                    })
-                ]))
+                ),
+                Animated.loop(
+                    Animated.sequence([
+                        Animated.timing(anim.float, {
+                            toValue: 1,
+                            duration: 3000 + Math.random() * 2000,
+                            easing: Easing.inOut(Easing.sin),
+                            useNativeDriver: true,
+                        }),
+                        Animated.timing(anim.float, {
+                            toValue: 0,
+                            duration: 3000 + Math.random() * 2000,
+                            easing: Easing.inOut(Easing.sin),
+                            useNativeDriver: true,
+                        })
+                    ])
+                )
             ]).start();
         });
 
-        return () => nodeAnimations.forEach(anim => {
-            anim.opacity.stopAnimation();
-            anim.scale.stopAnimation();
-            anim.position.stopAnimation();
-        });
+        return () => {
+            particleAnimations.forEach(anim => {
+                anim.opacity.stopAnimation();
+                anim.scale.stopAnimation();
+                anim.rotate.stopAnimation();
+                anim.position.stopAnimation();
+                anim.float.stopAnimation();
+            });
+        };
     }, []);
 
     const handleBackPress = () => {
@@ -212,136 +249,170 @@ export default function ProfilePage() {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <>
+            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+            <SafeAreaView style={styles.container}>
+                {/* Dynamic Background */}
                 <View style={styles.backgroundContainer}>
                     <LinearGradient
-                        colors={['#0D1421', '#1A237E', '#000051']}
+                        colors={['#0A0E1A', '#1A1B3A', '#2D1B69', '#0F0F23']}
                         style={styles.backgroundGradient}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                     />
-                    {nodePositions.map((node, index) => (
+
+                    {/* Animated Particles */}
+                    {particlePositions.map((particle, index) => (
                         <Animated.View
-                            key={`node-${index}`}
-                            style={{
-                                position: 'absolute',
-                                width: node.size,
-                                height: node.size,
-                                borderRadius: node.size / 2,
-                                backgroundColor: node.color,
-                                transform: [
-                                    { translateX: Animated.subtract(nodeAnimations[index].position.x, node.size / 2) },
-                                    { translateY: Animated.subtract(nodeAnimations[index].position.y, node.size / 2) },
-                                    { scale: nodeAnimations[index].scale }
-                                ],
-                                opacity: nodeAnimations[index].opacity,
-                            }}
+                            key={`particle-${index}`}
+                            style={[
+                                styles.particle,
+                                {
+                                    width: particle.size,
+                                    height: particle.size,
+                                    backgroundColor: particle.color,
+                                    shadowColor: particle.glowColor,
+                                    transform: [
+                                        {
+                                            translateX: Animated.add(
+                                                particleAnimations[index].position.x,
+                                                Animated.multiply(
+                                                    particleAnimations[index].float,
+                                                    20
+                                                )
+                                            )
+                                        },
+                                        {
+                                            translateY: Animated.add(
+                                                particleAnimations[index].position.y,
+                                                Animated.multiply(
+                                                    particleAnimations[index].float,
+                                                    30
+                                                )
+                                            )
+                                        },
+                                        { scale: particleAnimations[index].scale },
+                                        {
+                                            rotate: particleAnimations[index].rotate.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: ['0deg', '360deg']
+                                            })
+                                        }
+                                    ],
+                                    opacity: particleAnimations[index].opacity,
+                                }
+                            ]}
                         />
                     ))}
                 </View>
-                <ScrollView contentContainerStyle={styles.scrollViewContent}>
-                    <View style={styles.headerContainer}>
-                        <Pressable style={styles.backButton} onPress={handleBackPress}>
-                            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
-                        </Pressable>
-                        <Text style={styles.title}>Edit health details</Text>
-                    </View>
-                    <View>
-                        {healthFields.map(field => (
-                            <View key={field.key} style={{ marginBottom: 18 }}>
-                                <Text style={{ color: '#fff', fontWeight: '600', marginBottom: 6, fontSize: 16 }}>
-                                    {field.label}
-                                </Text>
-                                {field.type === 'select' ? (
-                                    <View style={styles.selectionInput}>
-                                        {[{ label: 'Yes', key: true }, { label: 'No', key: false }].map(option => (
-                                            <Pressable
-                                                key={option.label}
-                                                style={{
-                                                    flex: 1,
-                                                    paddingVertical: 10,
-                                                    backgroundColor: healthInputs[field.key] === option.key ? 'rgba(25,152,225,0.7)' : 'transparent',
-                                                    alignItems: 'center',
-                                                }}
-                                                android_ripple={{ color: '#1A237E' }}
-                                                onPress={() => handleInputChange(field.key, option.key as boolean)}
-                                            >
-                                                <Text style={{ color: healthInputs[field.key] === option.key ? '#fff' : '#B0BEC5', fontWeight: 'bold' }}>{option.label}</Text>
-                                            </Pressable>
-                                        ))}
-                                    </View>
-                                ) : field.type === 'dropdown' ? (
-                                    <View style={styles.textInputBox}>
-                                        <Text style={{ color: '#B0BEC5', fontSize: 16, marginBottom: 4 }}>
-                                            {healthInputs[field.key]
-                                                ? field.options?.find(opt => opt.key === healthInputs[field.key])?.label
-                                                : field.placeholder}
-                                        </Text>
-                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                                            {field.options?.map(option => (
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+                    <ScrollView
+                        contentContainerStyle={styles.scrollContent}
+                        showsVerticalScrollIndicator={false}
+                        bounces={true}
+                    >
+                        <View style={styles.headerContainer}>
+                            <Pressable style={styles.backButton} onPress={handleBackPress}>
+                                <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
+                            </Pressable>
+                            <Text style={styles.title}>Edit health details</Text>
+                        </View>
+                        <View>
+                            {healthFields.map(field => (
+                                <View key={field.key} style={{ marginBottom: 18 }}>
+                                    <Text style={{ color: '#fff', fontWeight: '600', marginBottom: 6, fontSize: 16 }}>
+                                        {field.label}
+                                    </Text>
+                                    {field.type === 'select' ? (
+                                        <View style={styles.selectionInput}>
+                                            {[{ label: 'Yes', key: true }, { label: 'No', key: false }].map(option => (
                                                 <Pressable
-                                                    key={option.key}
+                                                    key={option.label}
                                                     style={{
-                                                        paddingVertical: 6,
-                                                        paddingHorizontal: 12,
-                                                        marginRight: 8,
-                                                        marginBottom: 6,
-                                                        borderRadius: 8,
-                                                        backgroundColor: healthInputs[field.key] === option.key ? 'rgba(25,152,225,0.7)' : 'rgba(255,255,255,0.08)',
-                                                        borderWidth: healthInputs[field.key] === option.key ? 1 : 0,
-                                                        borderColor: '#1998E1'
+                                                        flex: 1,
+                                                        paddingVertical: 10,
+                                                        backgroundColor: healthInputs[field.key] === option.key ? 'rgba(25,152,225,0.7)' : 'transparent',
+                                                        alignItems: 'center',
                                                     }}
                                                     android_ripple={{ color: '#1A237E' }}
-                                                    onPress={() => handleInputChange(field.key, option.key)}
+                                                    onPress={() => handleInputChange(field.key, option.key as boolean)}
                                                 >
-                                                    <Text style={{
-                                                        color: healthInputs[field.key] === option.key ? '#fff' : '#B0BEC5',
-                                                        fontWeight: 'bold'
-                                                    }}>{option.label}</Text>
+                                                    <Text style={{ color: healthInputs[field.key] === option.key ? '#fff' : '#B0BEC5', fontWeight: 'bold' }}>{option.label}</Text>
                                                 </Pressable>
                                             ))}
                                         </View>
-                                    </View>
-                                ) : field.type === 'list' ? (
-                                    <ListInput
-                                        value={healthInputs[field.key] as string[]}
-                                        onChange={list => handleInputChange(field.key, list)}
-                                        placeholder={field.placeholder}
-                                    />
-                                ) : (
-                                    <View style={styles.textInputBox}>
-                                        <TextInput
+                                    ) : field.type === 'dropdown' ? (
+                                        <View style={styles.textInputBox}>
+                                            <Text style={{ color: '#B0BEC5', fontSize: 16, marginBottom: 4 }}>
+                                                {healthInputs[field.key]
+                                                    ? field.options?.find(opt => opt.key === healthInputs[field.key])?.label
+                                                    : field.placeholder}
+                                            </Text>
+                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                                {field.options?.map(option => (
+                                                    <Pressable
+                                                        key={option.key}
+                                                        style={{
+                                                            paddingVertical: 6,
+                                                            paddingHorizontal: 12,
+                                                            marginRight: 8,
+                                                            marginBottom: 6,
+                                                            borderRadius: 8,
+                                                            backgroundColor: healthInputs[field.key] === option.key ? 'rgba(25,152,225,0.7)' : 'rgba(255,255,255,0.08)',
+                                                            borderWidth: healthInputs[field.key] === option.key ? 1 : 0,
+                                                            borderColor: '#1998E1'
+                                                        }}
+                                                        android_ripple={{ color: '#1A237E' }}
+                                                        onPress={() => handleInputChange(field.key, option.key)}
+                                                    >
+                                                        <Text style={{
+                                                            color: healthInputs[field.key] === option.key ? '#fff' : '#B0BEC5',
+                                                            fontWeight: 'bold'
+                                                        }}>{option.label}</Text>
+                                                    </Pressable>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    ) : field.type === 'list' ? (
+                                        <ListInput
+                                            value={healthInputs[field.key] as string[]}
+                                            onChange={list => handleInputChange(field.key, list)}
                                             placeholder={field.placeholder}
-                                            placeholderTextColor="#B0BEC5"
-                                            style={styles.textInput}
-                                            value={healthInputs[field.key] as string}
-                                            onChangeText={text => handleInputChange(field.key, text)}
-                                            selectionColor="#1998E1"
                                         />
-                                    </View>
-                                )}
-                            </View>
-                        ))}
-                    </View>
-                    <View style={{ marginVertical: 10 }}>
-                        <Pressable style={styles.editHealthButton} android_ripple={{ color: '#1A237E' }} onPress={handleSave}>
-                            {!isSaving ?
-                                <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Save changes</Text>
-                                : <ActivityIndicator size={20}
-                                />}
-                        </Pressable>
-                    </View>
-                </ScrollView>
-                {loading &&
-                    <View style={styles.loadingBack}>
-                        <View style={styles.loadingBox}>
-                            <ActivityIndicator size={20} />
-                            <Text>Loading Meals...</Text>
+                                    ) : (
+                                        <View style={styles.textInputBox}>
+                                            <TextInput
+                                                placeholder={field.placeholder}
+                                                placeholderTextColor="#B0BEC5"
+                                                style={styles.textInput}
+                                                value={healthInputs[field.key] as string}
+                                                onChangeText={text => handleInputChange(field.key, text)}
+                                                selectionColor="#1998E1"
+                                            />
+                                        </View>
+                                    )}
+                                </View>
+                            ))}
                         </View>
-                    </View>}
-            </KeyboardAvoidingView>
-        </SafeAreaView>
+                        <View style={{ marginVertical: 10 }}>
+                            <Pressable style={styles.editHealthButton} android_ripple={{ color: '#1A237E' }} onPress={handleSave}>
+                                {!isSaving ?
+                                    <Text style={{ color: '#fff', fontSize: 18, fontWeight: 'bold' }}>Save changes</Text>
+                                    : <ActivityIndicator size={20}
+                                    />}
+                            </Pressable>
+                        </View>
+                    </ScrollView>
+                    {loading &&
+                        <View style={styles.loadingBack}>
+                            <View style={styles.loadingBox}>
+                                <ActivityIndicator size={20} />
+                                <Text>Loading Meals...</Text>
+                            </View>
+                        </View>}
+                </KeyboardAvoidingView>
+            </SafeAreaView>
+        </>
 
     )
 };
@@ -412,19 +483,33 @@ function ListInput({ value, onChange, placeholder }: ListInputProps) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0D1421'
+        backgroundColor: '#0A0E1A',
     },
     backgroundContainer: {
         position: 'absolute',
-        width: 400,
-        height: 785,
+        width: '100%',
+        height: '100%',
     },
     backgroundGradient: {
-        flex: 1
+        flex: 1,
     },
-    scrollViewContent: {
-        padding: 20,
-        paddingBottom: 40
+    particle: {
+        position: 'absolute',
+        borderRadius: 1000,
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 0 },
+    },
+    meshOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+    },
+    scrollContent: {
+        paddingHorizontal: 20,
+        paddingTop: 20,
     },
     headerContainer: {
         alignItems: 'center',
