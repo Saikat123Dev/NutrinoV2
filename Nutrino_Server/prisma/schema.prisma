@@ -41,13 +41,7 @@ enum Frequency {
 // ===== MODELS =====
 
 // Add this enum for conversation types
-enum ConversationType {
-  GENERAL_HEALTH
-  NUTRITION_FACTS
-  MEAL_PLANNING
-  EXERCISE_ADVICE
-  MEDICAL_QUERY
-}
+
 
 // Add this model to your existing schema.prisma file
 model HealthConversation {
@@ -63,7 +57,7 @@ model HealthConversation {
   usedWebSearch    Boolean          @default(false)
   sources          String?          @db.Text // JSON string containing sources if web search was used
   isFallback       Boolean          @default(false) // True if this was a fallback response
-  conversationType ConversationType @default(GENERAL_HEALTH)
+  conversationType String @default("GENERAL_HEALTH")
    searchQuery      String?  // Add this field
   searchResults    String?  // Add this field
   // Timestamps
@@ -72,7 +66,7 @@ model HealthConversation {
 
   @@index([userId])
   @@index([createdAt])
-  @@index([conversationType])
+ 
 }
 
 // Update your User model to include the health conversations relation

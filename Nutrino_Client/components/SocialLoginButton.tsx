@@ -87,7 +87,7 @@ const SocialLoginButton = ({
 
       const { createdSessionId, setActive } = await startOAuthFlow({
         redirectUrl: Linking.createURL("/", {
-          scheme: "myapp",
+          scheme: "nutrinoclient"
         }),
       });
 
@@ -104,7 +104,8 @@ const SocialLoginButton = ({
       setIsLoading(false);
       Alert.alert(
         "Authentication Error",
-        "There was a problem with the authentication process. Please try again."
+        "There was a probiem with the authentication process. Please try again.",
+      
       );
     }
   }, [startOAuthFlow]);

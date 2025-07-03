@@ -16,7 +16,8 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.pacmandev.Nutrino"
     },
     "web": {
       "bundler": "metro",
@@ -41,14 +42,15 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "0788a532-a30f-4717-b74d-75d38127cead"
+        "projectId": "e50f8cab-8b3a-4d9e-8dee-d21b88aade03"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/0788a532-a30f-4717-b74d-75d38127cead"
-    }
+      "url": "https://u.expo.dev/e50f8cab-8b3a-4d9e-8dee-d21b88aade03"
+    },
+    "owner": "developerpacman"
   }
 }
