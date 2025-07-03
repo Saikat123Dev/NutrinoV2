@@ -14,7 +14,7 @@ const tokenCache = {
   async getToken(key: string) {
     try {
       return await AsyncStorage.getItem(key);
-      
+
     } catch (err) {
       console.log('Token cache get error:', err);
       return null;
@@ -36,7 +36,6 @@ function RootLayoutNav() {
         headerShown: false,
       }}
     >
-      
       <Stack.Screen name="auth" />
       <Stack.Screen name="(tabs)" />
       <Stack.Screen
@@ -54,18 +53,18 @@ function RootLayoutNav() {
 // Loading component for better UX
 function LoadingScreen() {
   return (
-    <View style={{ 
-      flex: 1, 
-      justifyContent: 'center', 
-      alignItems: 'center', 
+    <View style={{
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
       backgroundColor: '#000' // or your app's background color
     }}>
       <ActivityIndicator size="large" color="#007AFF" />
-      <Text style={{ 
-        marginTop: 16, 
-        fontSize: 16, 
+      <Text style={{
+        marginTop: 16,
+        fontSize: 16,
         color: '#666',
-        textAlign: 'center' 
+        textAlign: 'center'
       }}>
         Initializing...
       </Text>
@@ -76,9 +75,9 @@ function LoadingScreen() {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isAppReady, setIsAppReady] = useState(false);
-  
+
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  
+
   if (!publishableKey) {
     throw new Error("Missing EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in environment variables");
   }
@@ -94,13 +93,13 @@ export default function RootLayout() {
       try {
         // Pre-warm AsyncStorage and any other background tasks
         await AsyncStorage.getItem('clerk-session'); // Pre-warm storage
-        
+
         // Add any other background initialization here
         // await someOtherInitialization();
-        
+
         // Small delay to ensure Clerk provider is ready
         await new Promise(resolve => setTimeout(resolve, 100));
-        
+
         setIsAppReady(true);
       } catch (error) {
         console.warn('App preparation error:', error);
