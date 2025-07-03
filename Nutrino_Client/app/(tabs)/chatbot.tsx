@@ -20,21 +20,39 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
-const PARTICLE_COUNT = 25
+const PARTICLE_COUNT = 25;
 
 type Message = {
   id: string;
   text: string;
   sender: 'user' | 'bot';
   timestamp: Date;
-  sources?: any[];
+  sources?: string[];
   followUp?: string;
   explanation?: string;
+  feedback?: string;
+  safety?: string;
+  isFollowUp?: boolean;
+};
+
+type Conversation = {
+  id: number;
+  userMessage: string;
+  aiResponse: {
+    answer: string;
+    explanation?: string;
+    feedback?: string;
+    followUp?: string;
+    safety?: string;
+    sources?: string[];
+  };
+  createdAt: string;
 };
 
 export default function ChatbotScreen() {
@@ -51,9 +69,29 @@ export default function ChatbotScreen() {
     }))
   ).current;
 
+  const { user } = useUser();
+  const email = user?.emailAddresses?.[0]?.emailAddress;
+  
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputText, setInputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  
+  const scrollViewRef = useRef<ScrollView>(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(50)).current;
+  const typingDot1 = useRef(new Animated.Value(0)).current;
+  const typingDot2 = useRef(new Animated.Value(0)).current;
+  const typingDot3 = useRef(new Animated.Value(0)).current;
+  const scrollButtonAnim = useRef(new Animated.Value(0)).current;
+  const historyPanelAnim = useRef(new Animated.Value(0)).current;
+  const [lastScrollPosition, setLastScrollPosition] = useState(0);
+  const [isScrollingUp, setIsScrollingUp] = useState(false);
+
   // Initialize animations
   useEffect(() => {
-    // Create particle positions
     const particles = Array(PARTICLE_COUNT).fill(null).map((_, index) => {
       const isLarge = index < 8;
       return {
@@ -81,7 +119,6 @@ export default function ChatbotScreen() {
 
     setParticlePositions(particles);
 
-    // Animate header entrance
     Animated.timing(headerAnimation, {
       toValue: 1,
       duration: 1200,
@@ -89,7 +126,6 @@ export default function ChatbotScreen() {
       useNativeDriver: true,
     }).start();
 
-    // Animate particles
     particleAnimations.forEach((anim, index) => {
       const particle = particles[index];
       if (!particle) return;
@@ -147,30 +183,6 @@ export default function ChatbotScreen() {
     };
   }, []);
 
-
-  const { user } = useUser();
-  const email = user?.emailAddresses?.[0]?.emailAddress;
-  console.log('User email:', user?.id);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      text: 'Hello! I\'m Nutrino, your health AI assistant. How can I help you today?',
-      sender: 'bot',
-      timestamp: new Date(),
-    }
-  ]);
-  const [inputText, setInputText] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(50)).current;
-  const typingDot1 = useRef(new Animated.Value(0)).current;
-  const typingDot2 = useRef(new Animated.Value(0)).current;
-  const typingDot3 = useRef(new Animated.Value(0)).current;
-  const scrollButtonAnim = useRef(new Animated.Value(0)).current;
-  const [lastScrollPosition, setLastScrollPosition] = useState(0);
-  const [isScrollingUp, setIsScrollingUp] = useState(false);
-
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -189,7 +201,7 @@ export default function ChatbotScreen() {
   }, []);
 
   useEffect(() => {
-    if (messages.length > 1) {
+    if (messages.length > 0) {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }
   }, [messages]);
@@ -203,6 +215,96 @@ export default function ChatbotScreen() {
       typingDot3.setValue(0);
     }
   }, [isLoading]);
+
+  useEffect(() => {
+    if (email) {
+      loadConversationHistory();
+      // Add welcome message if no messages exist
+      if (messages.length === 0) {
+        setMessages([{
+          id: '1',
+          text: 'Hello! I\'m Nutrino, your health AI assistant. How can I help you today?',
+          sender: 'bot',
+          timestamp: new Date(),
+        }]);
+      }
+    }
+  }, [email]);
+
+  const loadConversationHistory = async () => {
+    if (!email) return;
+    
+    try {
+      setIsRefreshing(true);
+      const response = await fetch(`https://nutrinov2.onrender.com/api/conversations/${encodeURIComponent(email)}`);
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setConversations(data.conversations);
+      } else {
+        throw new Error(data.error || 'Failed to load history');
+      }
+    } catch (error) {
+      console.error('Error loading conversation history:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const loadConversation = (conversation: Conversation) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    const newMessages: Message[] = [
+      {
+        id: conversation.id.toString(),
+        text: conversation.userMessage,
+        sender: 'user',
+        timestamp: new Date(conversation.createdAt),
+      },
+      {
+        id: `${conversation.id}-response`,
+        text: conversation.aiResponse.answer,
+        sender: 'bot',
+        timestamp: new Date(conversation.createdAt),
+        sources: conversation.aiResponse.sources,
+        explanation: conversation.aiResponse.explanation,
+        feedback: conversation.aiResponse.feedback,
+        safety: conversation.aiResponse.safety
+      }
+    ];
+    
+    if (conversation.aiResponse.followUp) {
+      newMessages.push({
+        id: `${conversation.id}-followup`,
+        text: conversation.aiResponse.followUp,
+        sender: 'bot',
+        timestamp: new Date(conversation.createdAt),
+        isFollowUp: true
+      });
+    }
+    
+    setMessages(newMessages);
+    setShowHistory(false);
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  };
+
+  const toggleHistory = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (showHistory) {
+      Animated.timing(historyPanelAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start(() => setShowHistory(false));
+    } else {
+      setShowHistory(true);
+      Animated.timing(historyPanelAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
 
   const startTypingAnimation = () => {
     Animated.loop(
@@ -242,12 +344,10 @@ export default function ChatbotScreen() {
   };
 
   const handleSendMessage = async () => {
-    console.log('Send button pressed');
     if (inputText.trim() === '' || !email) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Add user message
     const newUserMessage: Message = {
       id: Date.now().toString(),
       text: inputText,
@@ -256,6 +356,7 @@ export default function ChatbotScreen() {
     };
 
     setMessages(prev => [...prev, newUserMessage]);
+    const currentInput = inputText;
     setInputText('');
     setIsLoading(true);
 
@@ -267,17 +368,14 @@ export default function ChatbotScreen() {
         },
         body: JSON.stringify({
           email: email,
-          message: inputText
+          message: currentInput
         })
       });
-      if (!response.ok) {
-        console.log('Network response was not ok:', response);
-        throw new Error('Network response was not ok');
-      }
+
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to get response from server');
+        throw new Error(data.error || 'Network response was not ok');
       }
 
       const botMessage: Message = {
@@ -286,29 +384,32 @@ export default function ChatbotScreen() {
         sender: 'bot',
         timestamp: new Date(),
         sources: data.sources,
-        followUp: data.followUp,
-        explanation: data.explanation
+        explanation: data.explanation,
+        feedback: data.feedback,
+        safety: data.safety
       };
 
       setMessages(prev => [...prev, botMessage]);
 
-      // If there's a follow-up question, add it after a delay
       if (data.followUp) {
         setTimeout(() => {
           const followUpMessage: Message = {
-            id: Date.now().toString(),
+            id: (Date.now() + 1).toString(),
             text: data.followUp,
             sender: 'bot',
-            timestamp: new Date()
+            timestamp: new Date(),
+            isFollowUp: true
           };
           setMessages(prev => [...prev, followUpMessage]);
         }, 1500);
       }
+
+      // Refresh conversation history after new message
+      loadConversationHistory();
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
 
-      // Add error message to chat
       const errorMessage: Message = {
         id: Date.now().toString(),
         text: 'Sorry, I encountered an error. Please try again.',
@@ -323,6 +424,11 @@ export default function ChatbotScreen() {
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   const handleScroll = (event: any) => {
@@ -361,24 +467,34 @@ export default function ChatbotScreen() {
     }
   };
 
-  const showSources = (sources: any[]) => {
+  const renderSources = (sources: string[]) => {
     if (!sources || sources.length === 0) return null;
 
     return (
       <View style={styles.sourcesContainer}>
-        <Text style={styles.sourcesTitle}>Sources</Text>
+        <View style={styles.sourcesHeader}>
+          <MaterialCommunityIcons name="book-open-variant" size={14} color="#64B5F6" />
+          <Text style={styles.sourcesTitle}>Sources</Text>
+        </View>
         <View style={styles.sourcesGrid}>
           {sources.map((source, index) => (
             <TouchableOpacity
               key={index}
               style={styles.sourceItem}
-              onPress={() => Linking.openURL(source.url)}
+              onPress={() => {
+                const urlMatch = source.match(/https?:\/\/[^\s]+/);
+                if (urlMatch) {
+                  Linking.openURL(urlMatch[0]);
+                } else {
+                  Alert.alert('Source Information', source);
+                }
+              }}
             >
               <View style={styles.sourceIcon}>
                 <MaterialCommunityIcons name="link-variant" size={12} color="#64B5F6" />
               </View>
-              <Text style={styles.sourceText} numberOfLines={1}>
-                {source.title || 'View Source'}
+              <Text style={styles.sourceText} numberOfLines={2}>
+                {source}
               </Text>
             </TouchableOpacity>
           ))}
@@ -387,7 +503,7 @@ export default function ChatbotScreen() {
     );
   };
 
-  const showExplanation = (explanation: string) => {
+  const renderExplanation = (explanation: string) => {
     if (!explanation) return null;
 
     return (
@@ -397,6 +513,34 @@ export default function ChatbotScreen() {
           <Text style={styles.explanationTitle}>Additional Details</Text>
         </View>
         <Text style={styles.explanationText}>{explanation}</Text>
+      </View>
+    );
+  };
+
+  const renderFeedback = (feedback: string) => {
+    if (!feedback) return null;
+
+    return (
+      <View style={styles.feedbackContainer}>
+        <View style={styles.feedbackHeader}>
+          <MaterialCommunityIcons name="heart" size={14} color="#FF6B6B" />
+          <Text style={styles.feedbackTitle}>Personal Note</Text>
+        </View>
+        <Text style={styles.feedbackText}>{feedback}</Text>
+      </View>
+    );
+  };
+
+  const renderSafety = (safety: string) => {
+    if (!safety) return null;
+
+    return (
+      <View style={styles.safetyContainer}>
+        <View style={styles.safetyHeader}>
+          <MaterialCommunityIcons name="shield-check" size={14} color="#4CAF50" />
+          <Text style={styles.safetyTitle}>Important Notice</Text>
+        </View>
+        <Text style={styles.safetyText}>{safety}</Text>
       </View>
     );
   };
@@ -415,46 +559,46 @@ export default function ChatbotScreen() {
           />
 
           {/* Animated Particles */}
-  {particlePositions.map((particle, index) => (
-    <Animated.View
-      key={`particle-${index}`}
-      style={[
-        styles.particle,
-        {
-          width: particle.size,
-          height: particle.size,
-          backgroundColor: particle.color,
-          shadowColor: particle.glowColor,
-          shadowOpacity: 0.1, // softer glow
-          transform: [
-            {
-              translateX: Animated.add(
-                particleAnimations[index].position.x,
-                Animated.multiply(particleAnimations[index].float, 20)
-              ),
-            },
-            {
-              translateY: Animated.add(
-                particleAnimations[index].position.y,
-                Animated.multiply(particleAnimations[index].float, 30)
-              ),
-            },
-            { scale: particleAnimations[index].scale },
-            {
-              rotate: particleAnimations[index].rotate.interpolate({
-                inputRange: [0, 1],
-                outputRange: ['0deg', '360deg'],
-              }),
-            },
-          ],
-          opacity: Animated.multiply(
-            particleAnimations[index].opacity,
-            0.3 // reduce particle opacity to 30 %
-          ),
-        },
-      ]}
-    />
-  ))}
+          {particlePositions.map((particle, index) => (
+            <Animated.View
+              key={`particle-${index}`}
+              style={[
+                styles.particle,
+                {
+                  width: particle.size,
+                  height: particle.size,
+                  backgroundColor: particle.color,
+                  shadowColor: particle.glowColor,
+                  shadowOpacity: 0.1,
+                  transform: [
+                    {
+                      translateX: Animated.add(
+                        particleAnimations[index].position.x,
+                        Animated.multiply(particleAnimations[index].float, 20)
+                      ),
+                    },
+                    {
+                      translateY: Animated.add(
+                        particleAnimations[index].position.y,
+                        Animated.multiply(particleAnimations[index].float, 30)
+                      ),
+                    },
+                    { scale: particleAnimations[index].scale },
+                    {
+                      rotate: particleAnimations[index].rotate.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '360deg'],
+                      }),
+                    },
+                  ],
+                  opacity: Animated.multiply(
+                    particleAnimations[index].opacity,
+                    0.3
+                  ),
+                },
+              ]}
+            />
+          ))}
         </View>
 
         <View style={styles.header}>
@@ -468,10 +612,77 @@ export default function ChatbotScreen() {
             <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
           </Pressable>
           <Text style={styles.headerTitle}>Nutrino AI Chatbot</Text>
-          <View style={styles.statusIndicator}>
-            <View style={styles.onlineDot} />
-          </View>
+          <TouchableOpacity onPress={toggleHistory} style={styles.historyButton}>
+            <MaterialCommunityIcons name="history" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
+
+        {/* History Panel */}
+        {showHistory && (
+          <Animated.View 
+            style={[
+              styles.historyPanel,
+              {
+                transform: [{
+                  translateX: historyPanelAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [-width, 0]
+                  })
+                }],
+                opacity: historyPanelAnim
+              }
+            ]}
+          >
+            <View style={styles.historyHeader}>
+              <Text style={styles.historyTitle}>Your Conversations</Text>
+              <TouchableOpacity onPress={toggleHistory} style={styles.closeHistoryButton}>
+                <MaterialCommunityIcons name="close" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView
+              contentContainerStyle={styles.historyContent}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={loadConversationHistory}
+                  tintColor="#FFFFFF"
+                />
+              }
+            >
+              {conversations.length === 0 ? (
+                <View style={styles.emptyHistory}>
+                  <MaterialCommunityIcons name="robot-confused" size={48} color="rgba(255,255,255,0.3)" />
+                  <Text style={styles.emptyHistoryText}>No conversation history yet</Text>
+                </View>
+              ) : (
+                conversations.map((conversation) => (
+                  <TouchableOpacity
+                    key={conversation.id}
+                    style={styles.conversationItem}
+                    onPress={() => loadConversation(conversation)}
+                  >
+                    <View style={styles.conversationIcon}>
+                      <MaterialCommunityIcons 
+                        name={conversation.userMessage.includes('?') ? "comment-question" : "comment-text"} 
+                        size={20} 
+                        color="#14d9bb" 
+                      />
+                    </View>
+                    <View style={styles.conversationContent}>
+                      <Text style={styles.conversationText} numberOfLines={2}>
+                        {conversation.userMessage}
+                      </Text>
+                      <Text style={styles.conversationDate}>
+                        {formatDate(conversation.createdAt)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </Animated.View>
+        )}
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -538,10 +749,22 @@ export default function ChatbotScreen() {
                   <View style={[
                     styles.messageBubble,
                     message.sender === 'user' ? styles.userBubble : styles.botBubble,
+                    message.isFollowUp ? styles.followUpBubble : null
                   ]}>
+                    {message.isFollowUp && (
+                      <View style={styles.followUpIndicator}>
+                        <MaterialCommunityIcons name="comment-question" size={14} color="#FFB74D" />
+                        <Text style={styles.followUpLabel}>Follow-up Question</Text>
+                      </View>
+                    )}
+                    
                     <Text style={styles.messageText}>{message.text}</Text>
-                    {message.sender === 'bot' && showExplanation(message.explanation)}
-                    {message.sender === 'bot' && showSources(message.sources)}
+                    
+                    {message.sender === 'bot' && renderExplanation(message.explanation)}
+                    {message.sender === 'bot' && renderFeedback(message.feedback)}
+                    {message.sender === 'bot' && renderSafety(message.safety)}
+                    {message.sender === 'bot' && renderSources(message.sources)}
+                    
                     <View style={styles.messageFooter}>
                       <Text style={styles.messageTime}>
                         {formatTime(message.timestamp)}
@@ -639,8 +862,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-
+  backgroundGradient: {
+    flex: 1,
+  },
   particle: { 
+    position: 'absolute',
     borderRadius: 1000,
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -657,6 +883,11 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
   },
   backButton: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+  },
+  historyButton: {
     padding: 8,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
@@ -705,14 +936,31 @@ const styles = StyleSheet.create({
   },
   botBubble: {
     backgroundColor: 'rgba(20, 217, 187, 0.2)',
-    
     borderColor: 'rgba(255, 255, 255, 0.2)',
-    borderWidth:2,
+    borderWidth: 2,
   },
   userBubble: {
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderColor: 'rgba(0, 230, 118, 0.2)',
-    borderWidth:2,
+    borderWidth: 2,
+  },
+  followUpBubble: {
+    borderColor: 'rgba(255, 183, 77, 0.4)',
+    backgroundColor: 'rgba(255, 183, 77, 0.1)',
+  },
+  followUpIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 183, 77, 0.2)',
+  },
+  followUpLabel: {
+    fontSize: 12,
+    color: '#FFB74D',
+    marginLeft: 4,
+    fontWeight: '600',
   },
   messageText: {
     fontSize: 16,
@@ -742,7 +990,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     paddingHorizontal: 10,
-    marginBottom:8,
+    marginBottom: 8,
   },
   input: {
     flex: 1,
@@ -877,35 +1125,176 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
+  sourcesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   sourcesTitle: {
     fontSize: 12,
-    color: '#B0BEC5',
-    marginBottom: 5,
-    fontWeight: 'bold',
+    color: '#64B5F6',
+    marginLeft: 4,
+    fontWeight: '600',
+  },
+  sourcesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 4,
   },
   sourceItem: {
-    paddingVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    backgroundColor: 'rgba(100, 181, 246, 0.1)',
+    borderRadius: 8,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  sourceIcon: {
+    marginRight: 4,
   },
   sourceText: {
     fontSize: 12,
     color: '#64B5F6',
-    textDecorationLine: 'underline',
   },
   explanationContainer: {
-    marginTop: 10,
-    paddingTop: 10,
+    marginTop: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
+  explanationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   explanationTitle: {
     fontSize: 12,
-    color: '#B0BEC5',
-    marginBottom: 5,
-    fontWeight: 'bold',
+    color: '#FFB74D',
+    marginLeft: 4,
+    fontWeight: '600',
   },
   explanationText: {
     fontSize: 14,
     color: '#EEEEEE',
     lineHeight: 20,
+  },
+  feedbackContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  feedbackHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  feedbackTitle: {
+    fontSize: 12,
+    color: '#FF6B6B',
+    marginLeft: 4,
+    fontWeight: '600',
+  },
+  feedbackText: {
+    fontSize: 14,
+    color: '#EEEEEE',
+    lineHeight: 20,
+  },
+  safetyContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  safetyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  safetyTitle: {
+    fontSize: 12,
+    color: '#4CAF50',
+    marginLeft: 4,
+    fontWeight: '600',
+  },
+  safetyText: {
+    fontSize: 14,
+    color: '#EEEEEE',
+    lineHeight: 20,
+  },
+  // History panel styles
+  historyPanel: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '80%',
+    height: '100%',
+    backgroundColor: '#0F121C',
+    zIndex: 100,
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(255,255,255,0.05)',
+    paddingTop: 60,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  historyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  closeHistoryButton: {
+    padding: 4,
+  },
+  historyContent: {
+    paddingBottom: 100,
+  },
+  conversationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  conversationIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(20, 217, 187, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  conversationContent: {
+    flex: 1,
+  },
+  conversationText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  conversationDate: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.4)',
+  },
+  emptyHistory: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyHistoryText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.4)',
+    marginTop: 16,
   },
 });
