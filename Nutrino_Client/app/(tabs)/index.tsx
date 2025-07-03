@@ -197,21 +197,22 @@ export default function HomeScreen() {
       icon: 'robot-outline',
       primaryColor: '#64FFDA',
       secondaryColor: '#00BCD4',
-      gradientColors: ['#0D4F4F', '#1A6B6B', '#0A3B3B'],
+      gradientColors: ['rgba(100, 255, 218, 0.25)', 'rgba(0, 188, 212, 0.15)', 'rgba(26, 107, 107, 0.1)'],
       route: 'chatbot',
-      description: 'Personalized AI guidance for optimal health',
-      particles: ['🧠', '💡', '⚡'],
+      description: 'AI guidance for optimal health and wellness',
+      badge: 'NEW',
       featured: true
     },
     {
       id: 2,
-      title: 'Smart Profile Edit',
+      title: 'Smart Profile',
       icon: 'account-circle-outline',
-      primaryColor: '#FF6B6B',
+      primaryColor: '#44b33e',
       secondaryColor: '#FF5722',
-      gradientColors: ['#4A1515', '#662020', '#3D1010'],
+      gradientColors: ['rgba(255, 107, 107, 0.25)', 'rgba(255, 87, 34, 0.15)', 'rgba(102, 32, 32, 0.1)'],
       route: 'profile',
-      description: 'Edit profile',
+      description: 'Save & Edit profile',
+      badge: 'EDIT'
     },
     {
       id: 3,
@@ -219,19 +220,21 @@ export default function HomeScreen() {
       icon: 'chart-line',
       primaryColor: '#4FC3F7',
       secondaryColor: '#2196F3',
-      gradientColors: ['#1B3A5C', '#2A4F75', '#152B42'],
+      gradientColors: ['rgba(79, 195, 247, 0.25)', 'rgba(33, 150, 243, 0.15)', 'rgba(42, 79, 117, 0.1)'],
       route: 'healthreport',
       description: 'Health insights',
+      badge: 'VIEW'
     },
     {
       id: 4,
-      title: 'Meal Plans',
+      title: 'Meal Planner',
       icon: 'food-apple-outline',
       primaryColor: '#FFB74D',
       secondaryColor: '#FF9800',
-      gradientColors: ['#4A2F0A', '#664015', '#3D2408'],
+      gradientColors: ['rgba(255, 183, 77, 0.25)', 'rgba(255, 152, 0, 0.15)', 'rgba(102, 64, 21, 0.1)'],
       route: 'mealplanning',
-      description: 'AI-powered nutrition planning',
+      description: 'AI-powered Nutrition Plans (7days)',
+      badge: 'PLAN'
     },
     {
       id: 5,
@@ -239,9 +242,10 @@ export default function HomeScreen() {
       icon: 'dumbbell',
       primaryColor: '#BA68C8',
       secondaryColor: '#9C27B0',
-      gradientColors: ['#3D1A4A', '#52266B', '#2E1338'],
+      gradientColors: ['rgba(186, 104, 200, 0.25)', 'rgba(156, 39, 176, 0.15)', 'rgba(82, 38, 107, 0.1)'],
       route: 'workout',
-      description: 'Personalized workout routines',
+      description: 'Workout Routines',
+      badge: 'NEW'
     }
   ];
 
@@ -280,57 +284,56 @@ export default function HomeScreen() {
       <SafeAreaView style={styles.container}>
         {/* Dynamic Background */}
         <View style={styles.backgroundContainer}>
-          <LinearGradient
-            colors={['#0A0E1A', '#1A1B3A', '#2D1B69', '#0F0F23']}
-            style={styles.backgroundGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-          
-          {/* Animated Particles */}
-          {particlePositions.map((particle, index) => (
-            <Animated.View
-              key={`particle-${index}`}
-              style={[
-                styles.particle,
-                {
-                  width: particle.size,
-                  height: particle.size,
-                  backgroundColor: particle.color,
-                  shadowColor: particle.glowColor,
-                  transform: [
-                    { 
-                      translateX: Animated.add(
-                        particleAnimations[index].position.x,
-                        Animated.multiply(
-                          particleAnimations[index].float,
-                          20
-                        )
-                      )
-                    },
-                    { 
-                      translateY: Animated.add(
-                        particleAnimations[index].position.y,
-                        Animated.multiply(
-                          particleAnimations[index].float,
-                          30
-                        )
-                      )
-                    },
-                    { scale: particleAnimations[index].scale },
-                    {
-                      rotate: particleAnimations[index].rotate.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0deg', '360deg']
-                      })
-                    }
-                  ],
-                  opacity: particleAnimations[index].opacity,
-                }
-              ]}
-            />
-          ))}
-        </View>
+  <LinearGradient
+    colors={['#05070D', '#0D0E20', '#1A1240', '#050509']} // darker gradient
+    style={styles.backgroundGradient}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 1 }}
+  />
+
+  {/* Animated Particles */}
+  {particlePositions.map((particle, index) => (
+    <Animated.View
+      key={`particle-${index}`}
+      style={[
+        styles.particle,
+        {
+          width: particle.size,
+          height: particle.size,
+          backgroundColor: particle.color,
+          shadowColor: particle.glowColor,
+          shadowOpacity: 0.1, // softer glow
+          transform: [
+            {
+              translateX: Animated.add(
+                particleAnimations[index].position.x,
+                Animated.multiply(particleAnimations[index].float, 20)
+              ),
+            },
+            {
+              translateY: Animated.add(
+                particleAnimations[index].position.y,
+                Animated.multiply(particleAnimations[index].float, 30)
+              ),
+            },
+            { scale: particleAnimations[index].scale },
+            {
+              rotate: particleAnimations[index].rotate.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0deg', '360deg'],
+              }),
+            },
+          ],
+          opacity: Animated.multiply(
+            particleAnimations[index].opacity,
+            0.3 // reduce particle opacity to 30 %
+          ),
+        },
+      ]}
+    />
+  ))}
+</View>
+
 
         <ScrollView 
           contentContainerStyle={styles.scrollContent}
@@ -395,8 +398,8 @@ export default function HomeScreen() {
                 style={[
                   styles.featureWrapper,
                   {
-                    width: feature.featured ? width - 40 : (width - 60) / 2,
-                    marginBottom: feature.featured ? 20 : 15,
+                    width: feature.featured ? width - 40 : (width - 55) / 2,
+                    marginBottom: 10,
                     opacity: featureAnimations[index].opacity,
                     transform: [
                       { scale: featureAnimations[index].scale },
@@ -414,92 +417,102 @@ export default function HomeScreen() {
                   ]}
                   onPress={() => handleFeaturePress(feature.route, feature.primaryColor)}
                 >
-                  <LinearGradient
-                    colors={[...feature.gradientColors, '#0A0A0A']}
-                    style={[
-                      styles.cardGradient,
-                      feature.featured && styles.featuredCard
-                    ]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                  >
-                    {/* Glow Effect */}
+                  <View style={styles.cardContainer}>
+                    {/* Glass morphism background */}
+                    <View style={[styles.glassBackground, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]} />
+                    
+                    {/* Gradient overlay */}
+                    <LinearGradient
+                      colors={feature.gradientColors}
+                      style={styles.gradientOverlay}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                    />
+                    
+                    {/* Border glow */}
                     <View 
                       style={[
-                        styles.cardGlow,
+                        styles.borderGlow,
                         { 
                           shadowColor: feature.primaryColor,
-                          backgroundColor: `${feature.primaryColor}15`
+                          borderColor: `${feature.primaryColor}30`
                         }
                       ]} 
                     />
                     
+                    {/* Badge */}
+                    {feature.badge && (
+                      <View style={[styles.badge, { backgroundColor: `${feature.primaryColor}20` }]}>
+                        <Text style={[styles.badgeText, { color: feature.primaryColor }]}>
+                          {feature.badge}
+                        </Text>
+                      </View>
+                    )}
+                    
                     {/* Content */}
-                    <View style={styles.cardContent}>
+                    <View style={[styles.cardContent, feature.featured && styles.featuredContent]}>
+                      {/* Icon with enhanced styling */}
                       <View style={[
                         styles.iconContainer,
-                        feature.featured && styles.featuredIconContainer,
-                        { backgroundColor: `${feature.primaryColor}20` }
+                        { 
+                          backgroundColor: `${feature.primaryColor}15`,
+                          shadowColor: feature.primaryColor,
+                          shadowOpacity: 0.3,
+                          shadowRadius: 8,
+                          shadowOffset: { width: 0, height: 4 }
+                        }
                       ]}>
                         <MaterialCommunityIcons
                           name={feature.icon as any}
-                          size={feature.featured ? 42 : 28}
+                          size={feature.featured ? 36 : 28}
                           color={feature.primaryColor}
                         />
-                        {feature.featured && (
-                          <View style={styles.iconPulse}>
-                            <MaterialCommunityIcons
-                              name={feature.icon as any}
-                              size={42}
-                              color={feature.primaryColor}
-                              style={{ opacity: 0.3 }}
-                            />
-                          </View>
-                        )}
                       </View>
                       
+                      {/* Title */}
                       <Text style={[
                         styles.featureTitle,
-                        feature.featured && styles.featuredTitle
+                        feature.featured && styles.featuredTitle,
+                        { color: '#FFFFFF' }
                       ]}>
                         {feature.title}
                       </Text>
                       
+                      {/* Description */}
                       <Text style={[
                         styles.featureDescription,
-                        feature.featured && styles.featuredDescription
+                        feature.featured && styles.featuredDescription,
+                        { color: '#B0BEC5' }
                       ]}>
                         {feature.description}
                       </Text>
                       
-
+                      {/* Action indicator */}
+                      <View style={styles.actionIndicator}>
+                        <MaterialCommunityIcons
+                          name="arrow-right"
+                          size={20}
+                          color={feature.primaryColor}
+                        />
+                      </View>
                     </View>
                     
-                    {/* Interactive Border */}
-                    <View 
-                      style={[
-                        styles.cardBorder,
-                        { borderColor: `${feature.primaryColor}40` }
-                      ]} 
-                    />
-                    
-                    {/* Shimmer Effect */}
+                    {/* Shine effect */}
                     <LinearGradient
                       colors={[
                         'transparent',
-                        `${feature.primaryColor}20`,
+                        `${feature.primaryColor}10`,
                         'transparent'
                       ]}
-                      style={styles.shimmer}
+                      style={styles.shineEffect}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                     />
-                  </LinearGradient>
+                  </View>
                 </Pressable>
               </Animated.View>
             ))}
           </View>
-
 
           {/* Bottom Padding */}
           <View style={{ height: 50 }} />
@@ -533,17 +546,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   
-  meshOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 20 : 40,
+    paddingTop: 20,
   },
   
   headerContainer: {
@@ -631,7 +636,6 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 11,
     color: '#94A3B8',
-    marginTop: 4,
     fontWeight: '500',
   },
   
@@ -639,70 +643,89 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 4,
   },
   
   featureWrapper: {
-    marginBottom: 15,
+    marginBottom: 20,
   },
   
   featureCard: {
-    borderRadius: 24,
+    borderRadius: 20,
     overflow: 'hidden',
   },
   
-  cardGradient: {
-    borderRadius: 24,
-    padding: 2,
-    minHeight: 140,
+  cardContainer: {
+    borderRadius: 20,
     position: 'relative',
+    overflow: 'hidden',
+    minHeight: 170,
   },
   
-  featuredCard: {
-    minHeight: 180,
-  },
-  
-  cardGlow: {
-    position: 'absolute',
-    top: -2,
-    left: -2,
-    right: -2,
-    bottom: -2,
-    borderRadius: 26,
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  
-  cardContent: {
-    backgroundColor: 'rgba(10, 14, 26, 0.7)',
-    borderRadius: 30,
-    padding: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    position: 'relative',
-  },
-  
-  iconContainer: {
-    borderRadius: 16,
-    padding: 8,
-    marginBottom: 8,
-    position: 'relative',
-  },
-  
-  featuredIconContainer: {
-    padding: 8,
-    marginBottom: 8,
-  },
-  
-  iconPulse: {
+  glassBackground: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 50)',
+    backdropFilter: 'blur(10px)',
+  },
+  
+  gradientOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
+  },
+  
+  borderGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
+    borderWidth: 3,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  
+  badge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  
+  cardContent: {
+    padding: 4,
     alignItems: 'center',
     justifyContent: 'center',
+    flex: 1,
+    position: 'relative',
+    zIndex: 5,
+  },
+  
+  
+  iconContainer: {
+    borderRadius: 16,
+    padding: 7,
+    elevation: 2,
+    marginBottom: 12,
   },
   
   featureTitle: {
@@ -716,20 +739,41 @@ const styles = StyleSheet.create({
   
   featuredTitle: {
     fontSize: 20,
-    marginBottom: 10,
+    marginBottom: 12,
+    fontWeight: '800',
   },
   
   featureDescription: {
-    fontSize: 12,
-    color: '#94A3B8',
+    fontSize: 13,
+    color: '#B0BEC5',
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 18,
     fontWeight: '500',
+    paddingHorizontal: 4,
   },
   
   featuredDescription: {
     fontSize: 14,
     lineHeight: 20,
+    paddingHorizontal: 0,
   },
-
+  
+  actionIndicator: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 10,
+    padding: 4,
+  },
+  
+  shineEffect: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
+    opacity: 0.9,
+  },
 });
