@@ -276,49 +276,47 @@ export default function WorkoutScreen() {
             end={{ x: 1, y: 1 }}
           />
 
-          {/* Animated Particles - Keep existing */}
-          {particlePositions.map((particle, index) => (
-            <Animated.View
-              key={`particle-${index}`}
-              style={[
-                styles.particle,
-                {
-                  width: particle.size,
-                  height: particle.size,
-                  backgroundColor: particle.color,
-                  shadowColor: particle.glowColor,
-                  transform: [
-                    {
-                      translateX: Animated.add(
-                        particleAnimations[index].position.x,
-                        Animated.multiply(
-                          particleAnimations[index].float,
-                          20
-                        )
-                      )
-                    },
-                    {
-                      translateY: Animated.add(
-                        particleAnimations[index].position.y,
-                        Animated.multiply(
-                          particleAnimations[index].float,
-                          30
-                        )
-                      )
-                    },
-                    { scale: particleAnimations[index].scale },
-                    {
-                      rotate: particleAnimations[index].rotate.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0deg', '360deg']
-                      })
-                    }
-                  ],
-                  opacity: particleAnimations[index].opacity,
-                }
-              ]}
-            />
-          ))}
+          {/* Animated Particles */}
+  {particlePositions.map((particle, index) => (
+    <Animated.View
+      key={`particle-${index}`}
+      style={[
+        styles.particle,
+        {
+          width: particle.size,
+          height: particle.size,
+          backgroundColor: particle.color,
+          shadowColor: particle.glowColor,
+          shadowOpacity: 0.1, // softer glow
+          transform: [
+            {
+              translateX: Animated.add(
+                particleAnimations[index].position.x,
+                Animated.multiply(particleAnimations[index].float, 20)
+              ),
+            },
+            {
+              translateY: Animated.add(
+                particleAnimations[index].position.y,
+                Animated.multiply(particleAnimations[index].float, 30)
+              ),
+            },
+            { scale: particleAnimations[index].scale },
+            {
+              rotate: particleAnimations[index].rotate.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0deg', '360deg'],
+              }),
+            },
+          ],
+          opacity: Animated.multiply(
+            particleAnimations[index].opacity,
+            0.3 // reduce particle opacity to 30 %
+          ),
+        },
+      ]}
+    />
+  ))}
         </View>
 
         <ScrollView
