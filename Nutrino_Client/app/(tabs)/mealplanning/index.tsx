@@ -283,7 +283,7 @@ const DayPlanCard = ({ plan }: { plan: Record<string, any> | null }) => {
   }
   return (
     plan ?
-      <Pressable android_ripple={{ color: "rgba(31, 74, 98, 0.06)" }} style={[styles.nutritionContainer, { marginBottom: 5, backgroundColor: '#181F2F' }]} onPress={handleMealPress}>
+      <Pressable android_ripple={{ color: "rgba(31, 74, 98, 0.9)" }} style={[styles.nutritionContainer, { marginBottom: 20,backgroundColor: 'rgba(255, 255, 255, 0.08)'}]} onPress={handleMealPress}>
         <Text style={styles.nutritionTitle}>{plan.dayName}</Text>
         <View style={styles.nutritionStats}>
           <View style={styles.nutritionItem}>
@@ -411,11 +411,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   quickActionGradient: {
-    padding: 15,
+    padding:8,
     alignItems: 'center',
     borderRadius: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 10
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
     minHeight: 160,
-    borderWidth: 1,
+    borderWidth: 6,
     borderColor: 'rgba(255, 255, 255, 0.2)',
     position: 'relative'
   },
@@ -490,8 +490,8 @@ const styles = StyleSheet.create({
   nutritionContainer: {
     borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)'
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)'
   },
   nutritionTitle: {
     fontSize: 18,

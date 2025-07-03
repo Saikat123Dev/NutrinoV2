@@ -299,7 +299,7 @@ const Section: React.FC<SectionProps> = ({ title, items, icon }) => {
       {items.map((item, idx) => (
         <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
           <MaterialCommunityIcons name="check-circle-outline" size={18} color="#00E676" style={{ marginTop: 2, marginRight: 6 }} />
-          <Text style={{ color: '#B0BEC5', fontSize: 14, flex: 1 }}>{item}</Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 14, flex: 1 }}>{item}</Text>
         </View>
       ))}
     </View>
@@ -325,8 +325,8 @@ const ObjectSection: React.FC<ObjectSectionProps> = ({ title, obj, icon }) => {
             <Text style={{ color: '#00E676', fontWeight: '600', fontSize: 14, marginBottom: 2 }}>{key.replace(/([A-Z])/g, ' $1')}</Text>
             {value.map((v: string, idx: number) => (
               <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
-                <MaterialCommunityIcons name="circle-small" size={18} color="#B0BEC5" />
-                <Text style={{ color: '#B0BEC5', fontSize: 14, flex: 1 }}>{v}</Text>
+                <MaterialCommunityIcons name="circle-small" size={18} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontSize: 14, flex: 1 }}>{v}</Text>
               </View>
             ))}
           </View>
@@ -350,13 +350,13 @@ const HealthRisks: React.FC<HealthRisksProps> = ({ risks }) => {
       {risks.map((risk, idx) => (
         <View key={idx} style={{ marginBottom: 8 }}>
           <Text style={{ color: '#FFB300', fontWeight: '600', fontSize: 14 }}>{risk.condition}</Text>
-          <Text style={{ color: '#B0BEC5', fontSize: 14, marginBottom: 2 }}>{risk.description}</Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 14, marginBottom: 2 }}>{risk.description}</Text>
           {risk.preventionSteps && Array.isArray(risk.preventionSteps) && risk.preventionSteps.length > 0 && (
             <View style={{ marginLeft: 8 }}>
               {risk.preventionSteps.map((step: string, i: number) => (
                 <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                  <MaterialCommunityIcons name="circle-small" size={18} color="#B0BEC5" />
-                  <Text style={{ color: '#B0BEC5', fontSize: 13, flex: 1 }}>{step}</Text>
+                  <MaterialCommunityIcons name="circle-small" size={18} color="#FFFFFF" />
+                  <Text style={{ color: '#FFFFFF', fontSize: 13, flex: 1 }}>{step}</Text>
                 </View>
               ))}
             </View>
@@ -385,14 +385,14 @@ const MedicalAdvice: React.FC<MedicalAdviceProps> = ({ advice }) => {
             <View style={{ marginLeft: 8, marginBottom: 2 }}>
               {item.managementSteps.map((step: string, i: number) => (
                 <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                  <MaterialCommunityIcons name="circle-small" size={18} color="#B0BEC5" />
-                  <Text style={{ color: '#B0BEC5', fontSize: 13, flex: 1 }}>{step}</Text>
+                  <MaterialCommunityIcons name="circle-small" size={18} color="#FFFFFF" />
+                  <Text style={{ color: '#FFFFFF', fontSize: 13, flex: 1 }}>{step}</Text>
                 </View>
               ))}
             </View>
           )}
           {item.medicationAdvice && (
-            <Text style={{ color: '#B0BEC5', fontSize: 13, fontStyle: 'italic' }}>{item.medicationAdvice}</Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 13, fontStyle: 'italic' }}>{item.medicationAdvice}</Text>
           )}
         </View>
       ))}
@@ -418,8 +418,8 @@ const LifestyleModifications: React.FC<LifestyleModificationsProps> = ({ mods })
             <View style={{ marginLeft: 8 }}>
               {mod.recommendations.map((rec: string, i: number) => (
                 <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                  <MaterialCommunityIcons name="circle-small" size={18} color="#B0BEC5" />
-                  <Text style={{ color: '#B0BEC5', fontSize: 13, flex: 1 }}>{rec}</Text>
+                  <MaterialCommunityIcons name="circle-small" size={18} color="#FFFFFF" />
+                  <Text style={{ color: '#FFFFFF', fontSize: 13, flex: 1 }}>{rec}</Text>
                 </View>
               ))}
             </View>
@@ -473,19 +473,19 @@ const styles = StyleSheet.create({
     top: 10,
     padding: 10,
     borderRadius: 20,
-    backgroundColor: 'rgba(79, 195, 247, 0.1)'
+    backgroundColor: 'rgba(79, 195, 247, 0.2)'
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#4FC3F7',
+    color: '#FFFFFF',
     marginBottom: 5,
     textAlign: 'center',
     letterSpacing: 1
   },
   subtitle: {
     fontSize: 14,
-    color: '#B0BEC5',
+    color: '#FFFFFF',
     fontStyle: 'italic'
   },
   sectionStyle: {
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(100, 255, 218, 0.2)',
     alignItems: 'center'
   },
   insightsTitle: {
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
   },
   insightsText: {
     fontSize: 14,
-    color: '#B0BEC5',
+    color: '#FFFFFF',
     textAlign: 'center',
     lineHeight: 20
   },
