@@ -210,7 +210,7 @@ export default function ProfilePage() {
                     })
             } catch (error) {
                 if (axios.isAxiosError?.(error)) {
-                    console.error("Report error: ", error.response);
+                   // console.error("Report error: ", error.response);
                 }
             }
             setLoading(false);
@@ -242,7 +242,7 @@ export default function ProfilePage() {
             await axiosInsatance.post('/v1/healthstatus/healthprofile', { clerkId, ...healthInputs })
         } catch (error) {
             if (axios.isAxiosError?.(error)) {
-                console.error("Report error: ", error.response);
+               // console.error("Report error: ", error.response);
             }
         }
         setIsSaving(false);

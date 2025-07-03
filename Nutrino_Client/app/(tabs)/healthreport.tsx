@@ -1,4 +1,4 @@
-import axiosInsatance from '@/configs/axios-config';
+import axiosInstance from '@/configs/axios-config';
 import { useUser } from '@clerk/clerk-expo';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
@@ -17,6 +17,7 @@ export default function HealthReportScreen() {
   const [particlePositions, setParticlePositions] = useState<Array<any>>([]);
   const headerAnimation = useRef(new Animated.Value(0)).current;
   const [isLoaded, setIsLoaded] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const particleAnimations = useRef(
     Array(PARTICLE_COUNT).fill(null).map(() => ({
       opacity: new Animated.Value(0),
@@ -29,7 +30,6 @@ export default function HealthReportScreen() {
 
   // Initialize animations
   useEffect(() => {
-    // Create particle positions
     const particles = Array(PARTICLE_COUNT).fill(null).map((_, index) => {
       const isLarge = index < 8;
       return {
@@ -57,7 +57,6 @@ export default function HealthReportScreen() {
 
     setParticlePositions(particles);
 
-    // Animate header entrance
     Animated.timing(headerAnimation, {
       toValue: 1,
       duration: 1200,
@@ -65,7 +64,6 @@ export default function HealthReportScreen() {
       useNativeDriver: true,
     }).start();
 
-    // Animate particles
     particleAnimations.forEach((anim, index) => {
       const particle = particles[index];
       if (!particle) return;
@@ -132,31 +130,182 @@ export default function HealthReportScreen() {
   const clerkId = user?.id;
   const isFocused = useIsFocused();
 
-  // fetch or generate health report
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  useEffect(() => {
-    const fetchHealthReport = async () => {
-      if (!clerkId) return;
-      try {
-        setLoading(true);
-        await axiosInsatance.post('/v1/feedback/health', { clerkId })
-          .then(res => {
-            const report = res.data.data;
-            setHealthReport(report?.structuredReport);
-          })
-      } catch (error) {
-        if (axios.isAxiosError?.(error)) {
-          console.error("Report error: ", error.response);
-        }
-      };
-      setLoading(false);
-    };
-
+  const [loading, setLoading] = useState<boolean>(true); // Start with loading true
+  
+  const retryFetch = () => {
+    setApiError(null);
+    setHealthReport(null);
+    setLoading(true);
     fetchHealthReport();
-  }, [clerkId]);
+  };
 
+  const fetchHealthReport = async () => {
+    if (!clerkId) {
+      setLoading(false);
+      setApiError("User not authenticated");
+      return;
+    }
+    
+    try {
+      const response = await axiosInstance.post('/v1/feedback/health', { clerkId });
+      
+      if (response.data?.data?.structuredReport) {
+        setHealthReport(response.data.data.structuredReport);
+        setApiError(null);
+      } else {
+        setApiError("No health report data found");
+      }
+    } catch (error) {
+      let errorMessage = "Failed to fetch health report";
+      
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          // Server responded with error status
+          if (error.response.status === 404) {
+            errorMessage = "No health report found. Please complete your health assessments.";
+          } else if (error.response.status === 401) {
+            errorMessage = "Session expired. Please log in again.";
+          } else if (error.response.status >= 500) {
+            errorMessage = "Server error. Please try again later.";
+          } else if (error.response.data?.message) {
+            errorMessage = error.response.data.message;
+          }
+        } else if (error.request) {
+          // Request was made but no response received
+          errorMessage = "Network error. Please check your connection.";
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      setApiError(errorMessage);
+      console.error("Health report fetch error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
+    if (isFocused) {
+      fetchHealthReport();
+    }
+  }, [clerkId, isFocused]);
+
+  const ErrorDisplay = () => (
+    <View style={styles.errorContainer}>
+      <LinearGradient
+        colors={['#2D1B1B', '#3D2626']}
+        style={styles.errorCard}
+      >
+        <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#FF6B6B" />
+        <Text style={styles.errorTitle}>Oops! Something went wrong</Text>
+        <Text style={styles.errorMessage}>{apiError}</Text>
+        
+        <Pressable 
+          style={styles.retryButton} 
+          onPress={retryFetch}
+          android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
+        >
+          <LinearGradient
+            colors={['#4FC3F7', '#29B6F6']}
+            style={styles.retryButtonGradient}
+          >
+            <MaterialCommunityIcons name="refresh" size={20} color="#FFFFFF" />
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </LinearGradient>
+        </Pressable>
+      </LinearGradient>
+    </View>
+  );
+
+  const EmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <LinearGradient
+        colors={['#1A1A2E', '#2D2D44']}
+        style={styles.emptyCard}
+      >
+        <MaterialCommunityIcons name="file-document-outline" size={48} color="#4FC3F7" />
+        <Text style={styles.emptyTitle}>No Report Available</Text>
+        <Text style={styles.emptyMessage}>
+          Complete your health assessments to generate your personalized health report.
+        </Text>
+        
+        <Pressable 
+          style={styles.retryButton} 
+          onPress={retryFetch}
+          android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
+        >
+          <LinearGradient
+            colors={['#4FC3F7', '#29B6F6']}
+            style={styles.retryButtonGradient}
+          >
+            <MaterialCommunityIcons name="refresh" size={20} color="#FFFFFF" />
+            <Text style={styles.retryButtonText}>Refresh</Text>
+          </LinearGradient>
+        </Pressable>
+      </LinearGradient>
+    </View>
+  );
+
+  const LoadingIndicator = () => (
+    <View style={styles.loadingOverlay}>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4FC3F7" />
+        <Text style={styles.loadingText}>Loading your health report...</Text>
+      </View>
+    </View>
+  );
+
+  const ReportContent = () => {
+    if (!healthReport) return null;
+    
+    return (
+      <View style={{ marginBottom: 30 }}>
+        <Section
+          title="Strengths"
+          items={healthReport.strengths}
+          icon={<MaterialCommunityIcons name="thumb-up-outline" size={20} color="#00E676" />}
+        />
+        <Section
+          title="Areas for Improvement"
+          items={healthReport.areasForImprovement}
+          icon={<MaterialCommunityIcons name="alert-outline" size={20} color="#FFB300" />}
+        />
+        <ObjectSection
+          title="Stress Management"
+          obj={healthReport.stressManagement}
+          icon={<MaterialCommunityIcons name="meditation" size={20} color="#4FC3F7" />}
+        />
+        <ObjectSection
+          title="Digestive Health"
+          obj={healthReport.digestiveHealth}
+          icon={<MaterialCommunityIcons name="food-apple-outline" size={20} color="#FF7043" />}
+        />
+        <ObjectSection
+          title="Sleep Recommendations"
+          obj={healthReport.sleepRecommendations}
+          icon={<MaterialCommunityIcons name="sleep" size={20} color="#9575CD" />}
+        />
+        <HealthRisks risks={healthReport.healthRisks} />
+        <MedicalAdvice advice={healthReport.medicalAdvice} />
+        <LifestyleModifications mods={healthReport.lifestyleModifications} />
+        
+        {healthReport?.insightSummary && (
+          <View style={styles.insightsContainer}>
+            <LinearGradient
+              colors={['#0D2F10', '#173E19']}
+              style={styles.insightsCard}
+            >
+              <MaterialCommunityIcons name="lightbulb-outline" size={24} color="#00E676" />
+              <Text style={styles.insightsTitle}>Health Insights</Text>
+              <Text style={styles.insightsText}>{healthReport.insightSummary}</Text>
+            </LinearGradient>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
     <>
@@ -172,52 +321,54 @@ export default function HealthReportScreen() {
           />
 
           {/* Animated Particles */}
-  {particlePositions.map((particle, index) => (
-    <Animated.View
-      key={`particle-${index}`}
-      style={[
-        styles.particle,
-        {
-          width: particle.size,
-          height: particle.size,
-          backgroundColor: particle.color,
-          shadowColor: particle.glowColor,
-          shadowOpacity: 0.1, // softer glow
-          transform: [
-            {
-              translateX: Animated.add(
-                particleAnimations[index].position.x,
-                Animated.multiply(particleAnimations[index].float, 20)
-              ),
-            },
-            {
-              translateY: Animated.add(
-                particleAnimations[index].position.y,
-                Animated.multiply(particleAnimations[index].float, 30)
-              ),
-            },
-            { scale: particleAnimations[index].scale },
-            {
-              rotate: particleAnimations[index].rotate.interpolate({
-                inputRange: [0, 1],
-                outputRange: ['0deg', '360deg'],
-              }),
-            },
-          ],
-          opacity: Animated.multiply(
-            particleAnimations[index].opacity,
-            0.3 // reduce particle opacity to 30 %
-          ),
-        },
-      ]}
-    />
-  ))}
+          {particlePositions.map((particle, index) => (
+            <Animated.View
+              key={`particle-${index}`}
+              style={[
+                styles.particle,
+                {
+                  width: particle.size,
+                  height: particle.size,
+                  backgroundColor: particle.color,
+                  shadowColor: particle.glowColor,
+                  shadowOpacity: 0.1,
+                  transform: [
+                    {
+                      translateX: Animated.add(
+                        particleAnimations[index].position.x,
+                        Animated.multiply(particleAnimations[index].float, 20)
+                      ),
+                    },
+                    {
+                      translateY: Animated.add(
+                        particleAnimations[index].position.y,
+                        Animated.multiply(particleAnimations[index].float, 30)
+                      ),
+                    },
+                    { scale: particleAnimations[index].scale },
+                    {
+                      rotate: particleAnimations[index].rotate.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '360deg'],
+                      }),
+                    },
+                  ],
+                  opacity: Animated.multiply(
+                    particleAnimations[index].opacity,
+                    0.3
+                  ),
+                },
+              ]}
+            />
+          ))}
         </View>
+
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           bounces={true}
         >
+          {/* Header */}
           <View style={styles.headerContainer}>
             <Pressable style={styles.backButton} onPress={handleBackPress}>
               <MaterialCommunityIcons name="arrow-left" size={24} color="#4FC3F7" />
@@ -225,64 +376,26 @@ export default function HealthReportScreen() {
             <Text style={styles.title}>Health Report</Text>
             <Text style={styles.subtitle}>Track your wellness journey</Text>
           </View>
-          {healthReport && (
-            <View style={{ marginBottom: 30 }}>
-              <Section
-                title="Strengths"
-                items={healthReport.strengths}
-                icon={<MaterialCommunityIcons name="thumb-up-outline" size={20} color="#00E676" />}
-              />
-              <Section
-                title="Areas for Improvement"
-                items={healthReport.areasForImprovement}
-                icon={<MaterialCommunityIcons name="alert-outline" size={20} color="#FFB300" />}
-              />
-              <ObjectSection
-                title="Stress Management"
-                obj={healthReport.stressManagement}
-                icon={<MaterialCommunityIcons name="meditation" size={20} color="#4FC3F7" />}
-              />
-              <ObjectSection
-                title="Digestive Health"
-                obj={healthReport.digestiveHealth}
-                icon={<MaterialCommunityIcons name="food-apple-outline" size={20} color="#FF7043" />}
-              />
-              <ObjectSection
-                title="Sleep Recommendations"
-                obj={healthReport.sleepRecommendations}
-                icon={<MaterialCommunityIcons name="sleep" size={20} color="#9575CD" />}
-              />
-              <HealthRisks risks={healthReport.healthRisks} />
-              <MedicalAdvice advice={healthReport.medicalAdvice} />
-              <LifestyleModifications mods={healthReport.lifestyleModifications} />
-            </View>
+
+          {/* Content based on state */}
+          {loading ? (
+            <LoadingIndicator />
+          ) : apiError ? (
+            <ErrorDisplay />
+          ) : healthReport ? (
+            <ReportContent />
+          ) : (
+            <EmptyState />
           )}
-
-          {healthReport?.insightSummary &&
-            <View style={styles.insightsContainer}>
-              <LinearGradient
-                colors={['#0D2F10', '#173E19']}
-                style={styles.insightsCard}
-              >
-                <MaterialCommunityIcons name="lightbulb-outline" size={24} color="#00E676" />
-                <Text style={styles.insightsTitle}>Health Insights</Text>
-                <Text style={styles.insightsText}>{healthReport?.insightSummary}</Text>
-              </LinearGradient>
-            </View>}
-
         </ScrollView>
-        {loading &&
-          <View style={styles.loadingBack}>
-            <View style={styles.loadingBox}>
-              <ActivityIndicator size={20} />
-              <Text>Loading report...</Text>
-            </View>
-          </View>}
+
+        {loading && <LoadingIndicator />}
       </SafeAreaView>
     </>
   );
 }
 
+// Component definitions remain the same...
 type SectionProps = {
   title: string;
   items?: string[] | null;
@@ -430,7 +543,6 @@ const LifestyleModifications: React.FC<LifestyleModificationsProps> = ({ mods })
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -461,6 +573,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 20,
+    flexGrow: 1,
   },
   headerContainer: {
     alignItems: 'center',
@@ -518,23 +631,102 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20
   },
-  loadingBack: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10, 14, 26, 0.8)',
     justifyContent: 'center',
-    position: 'absolute',
-    top: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)'
+    alignItems: 'center',
+    zIndex: 1000,
   },
-  loadingBox: {
-    width: `60%`,
-    height: 40,
-    backgroundColor: '#ffff',
+  loadingContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    minWidth: 200,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorCard: {
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 350,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.3)',
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FF6B6B',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  emptyCard: {
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 350,
+    borderWidth: 1,
+    borderColor: 'rgba(79, 195, 247, 0.3)',
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4FC3F7',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyMessage: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  retryButton: {
+    borderRadius: 25,
+    overflow: 'hidden',
+    marginTop: 10,
+  },
+  retryButtonGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 10,
-    flexDirection: 'row',
-    gap: 5
-  }
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
 });

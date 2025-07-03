@@ -165,7 +165,7 @@ export default function ProfilePage() {
                     })
             } catch (error) {
                 if (axios.isAxiosError?.(error)) {
-                    console.error("Report error: ", error.response);
+                   // console.error("Report error: ", error.response);
                 }
             }
             setLoading(false);

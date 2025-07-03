@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Nutrino_Client",
-    "slug": "Nutrino_Client",
+    "name": "Nutrino",
+    "slug": "Nutrino",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
