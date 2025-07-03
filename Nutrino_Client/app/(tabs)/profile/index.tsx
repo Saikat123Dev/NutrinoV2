@@ -1,5 +1,5 @@
 import axiosInsatance from '@/configs/axios-config';
-import { useUser } from '@clerk/clerk-expo';
+import { useAuth, useUser } from '@clerk/clerk-expo';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import axios from 'axios';
@@ -210,6 +210,15 @@ export default function ProfilePage() {
         ])
     }, [fetchedData]);
 
+    // handle logout
+    const { signOut } = useAuth();
+    const [signingOut, setSigningOut] = useState(false);
+    const handleSignLout = async () => {
+        setSigningOut(true);
+        await signOut();
+        router.replace('/auth');
+        setSigningOut(false);
+    }
     return (
         <>
             <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
@@ -317,6 +326,24 @@ export default function ProfilePage() {
                             <Text style={[styles.textNormal, { fontSize: 18 }]}>{fetchedData ? "Edit" : "Add"} health details</Text>
                         </Pressable>
                     </View>}
+                    <View style={{ marginVertical: 16 }}>
+                        <Pressable onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            handleSignLout();
+                        }}
+                            style={({ pressed }) => [styles.logoutButton, {
+                                backgroundColor: pressed
+                                    ? 'rgba(255,255,255,0.22)'
+                                    : 'rgba(96, 96, 96, 0.39)',
+                            }]}
+                            android_ripple={{ color: 'rgba(255, 255, 255, 0.06)' }}
+                            disabled={signingOut}
+                        >
+                            <MaterialCommunityIcons name="logout" size={24} color="#ae5252" style={{ marginRight: 10 }} />
+                            <Text style={styles.logoutButtonText} >{signingOut ? "Logging out..." : "Logout"}</Text>
+                            {signingOut && <ActivityIndicator size={24} />}
+                        </Pressable>
+                    </View>
                 </ScrollView>
             </SafeAreaView>
         </>
@@ -427,5 +454,18 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgb(25, 152, 225)',
         padding: 12,
         borderRadius: 20
+    },
+    logoutButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 24,
+    },
+    logoutButtonText: {
+        color: '#ae5252',
+        fontSize: 19,
+        fontWeight: 'bold',
+        letterSpacing: 1.2,
     }
 });
