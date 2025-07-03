@@ -64,7 +64,8 @@ model HealthConversation {
   sources          String?          @db.Text // JSON string containing sources if web search was used
   isFallback       Boolean          @default(false) // True if this was a fallback response
   conversationType ConversationType @default(GENERAL_HEALTH)
-
+   searchQuery      String?  // Add this field
+  searchResults    String?  // Add this field
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
