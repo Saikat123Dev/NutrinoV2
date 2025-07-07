@@ -111,7 +111,7 @@ router.post('/verify', async (req, res) => {
       .createHmac('sha256', "kjwbasjkbjkbkasbkb")
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
-
+    console.log('Generated signature:', generatedSignature);
     if (generatedSignature !== razorpay_signature) {
       return res.status(400).json({ error: 'Invalid payment signature' });
     }
@@ -120,7 +120,7 @@ router.post('/verify', async (req, res) => {
     const subscription = await prisma.subscription.findUnique({
       where: { razorpayOrderId: razorpay_order_id }
     });
-
+    console.log('Found subscription:', subscription);
     if (!subscription) {
       return res.status(404).json({ error: 'Subscription not found' });
     }
