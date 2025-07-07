@@ -28,7 +28,7 @@ const FEATURE_ANIMATION_DELAY = 80;
 const RAZORPAY_KEY_ID = 'rzp_test_5mWhr2b2Z5jFgc';
 const COMPANY_NAME = 'HealthFit Pro';
 const COMPANY_LOGO = 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fletsenhance.io%2F&psig=AOvVaw2xvlTE9CM-a2S8muiEOqP4&ust=1751953520200000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCKCgv8yFqo4DFQAAAAAdAAAAABAE'
-const API_BASE_URL = 'https://a2f8-115-124-42-212.ngrok-free.app/api/v1';
+const API_BASE_URL = 'https://nutrinov2.onrender.com/api/v1';
 
 export default function SubscriptionScreen() {
   const { user } = useUser();

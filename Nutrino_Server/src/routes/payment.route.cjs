@@ -154,7 +154,7 @@ router.post('/verify', async (req, res) => {
         endDate: endDate
       }
     });
-
+   console.log(updatedSubscription)
     // Here you might want to:
     // 1. Send a confirmation email
     // 2. Update user's premium status in your system
