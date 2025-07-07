@@ -284,6 +284,7 @@ export default function HomeScreen() {
 
   return (
     <>
+   
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <SafeAreaView style={styles.container}>
         {/* Dynamic Background */}
@@ -522,6 +523,7 @@ export default function HomeScreen() {
           <View style={{ height: 50 }} />
         </ScrollView>
       </SafeAreaView>
+    
     </>
   );
 }

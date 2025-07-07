@@ -8,6 +8,7 @@ import mealPlanning from './routes/mealPlanning.route.js';
 import meal from "./routes/mealPlanV.route.js"
 import conversation from "./routes/conversation.route.js"
 import exercise from "./routes/exercise.router.cjs"
+import subscription from "./routes/payment.route.cjs"
 const app = express();
 
 
@@ -31,7 +32,7 @@ app.use("/api/v1/user", mealPlanning)
 app.use("/api", conversation)
 app.use("/api/exercise", exercise)
 app.use("/api", meal)
-
+app.use("/api/v1/subscriptions",subscription )
 
 const server = app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);

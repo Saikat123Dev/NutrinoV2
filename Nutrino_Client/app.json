@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pacmandev.Nutrino"
     },
     "android": {
       "adaptiveIcon": {
@@ -45,9 +46,7 @@
         "projectId": "e50f8cab-8b3a-4d9e-8dee-d21b88aade03"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion":"1.0.0",
     "updates": {
       "url": "https://u.expo.dev/e50f8cab-8b3a-4d9e-8dee-d21b88aade03"
     },

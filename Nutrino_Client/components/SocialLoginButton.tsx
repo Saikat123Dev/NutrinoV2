@@ -49,7 +49,7 @@ const SocialLoginButton = ({
     if (isLoaded && isSignedIn) {
       console.log("User is signed in, navigating...");
 
-
+       router.push("/(tabs)/subscription")
       // Always navigate to complete-your-profile after login
       //  router.push("/auth/complete-your-account");
 

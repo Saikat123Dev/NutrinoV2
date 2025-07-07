@@ -1,5 +1,5 @@
 import { useAuth, useUser } from "@clerk/clerk-expo";
-import { Redirect, Stack, usePathname } from "expo-router";
+import { Redirect, router, Stack, usePathname } from "expo-router";
 
 export default function AuthLayout() {
   const { user } = useUser();
@@ -7,14 +7,12 @@ export default function AuthLayout() {
   const { isSignedIn } = useAuth();
 
   if (isSignedIn && user?.unsafeMetadata?.onboarding_completed !== true) {
-    if (pathName !== "/(tabs)") {
-      return <Redirect href="/(tabs)" />;
-    }
+   router.push("/(tabs)/subscription");
   }
 
-  // if (isSignedIn && user?.unsafeMetadata?.onboarding_completed === true) {
-  //   return <Redirect href="/(tabs)" />;
-  // }
+  if (isSignedIn && user?.unsafeMetadata?.onboarding_completed === true) {
+    return <Redirect href="/(tabs)/subscription" />;
+  }
 
   return (
     <Stack>

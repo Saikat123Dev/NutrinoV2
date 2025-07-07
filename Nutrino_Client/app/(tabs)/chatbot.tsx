@@ -24,7 +24,7 @@ import {
   RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import PremiumGuard from '@/components/PremiumGuard';
 const { width, height } = Dimensions.get('window');
 const PARTICLE_COUNT = 25;
 
@@ -547,6 +547,7 @@ export default function ChatbotScreen() {
 
   return (
     <>
+     <PremiumGuard>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <SafeAreaView style={styles.container}>
         {/* Dynamic Background */}
@@ -848,6 +849,7 @@ export default function ChatbotScreen() {
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+      </PremiumGuard>
     </>
   );
 }

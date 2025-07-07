@@ -38,12 +38,27 @@ enum Frequency {
   RARELY
 }
 
-// ===== MODELS =====
+model Subscription {
+  id               Int       @id @default(autoincrement())
+  userId           Int
+  user             User      @relation(fields: [userId], references: [id])
+  planId           String    // '6month' or '1year'
+  razorpayOrderId  String
+  razorpayPaymentId String?
+  razorpaySignature String?
+  amount           Int       // in paise
+  currency         String    @default("INR")
+  status           String    @default("pending") // pending, success, failed
+  startDate        DateTime?
+  endDate          DateTime?
+  isActive         Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-// Add this enum for conversation types
-
-
-// Add this model to your existing schema.prisma file
+  @@index([userId])
+  @@index([razorpayOrderId])
+  @@index([status])
+}
 model HealthConversation {
   id     Int  @id @default(autoincrement())
   userId Int
@@ -69,6 +84,7 @@ model HealthConversation {
  
 }
 
+
 // Update your User model to include the health conversations relation
 // Add this to your existing User model:
 model User {
@@ -84,7 +100,9 @@ model User {
   mentalHealth        MentalHealth?
   healthReport        HealthReport?
   mealPlan            MealPlan?
-  healthConversations HealthConversation[] // Add this line
+  healthConversations HealthConversation[]
+  subscriptions       Subscription[]
+
 }
 
 model HealthProfile {
@@ -323,9 +341,3 @@ model Meal {
   @@index([dailyPlanId])
 }
 
-// Update the User model to include the relation
-// Add this to your existing User model
-// model User {
-//   ...existing fields
-//   mealPlan       MealPlan?
-// }

@@ -13,20 +13,33 @@ import {
   Text, 
   View,
   StatusBar,
-  Platform,
-  Alert 
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import RazorpayCheckout from 'react-native-razorpay';
+import { useUser } from '@clerk/clerk-expo';
 
 const { width, height } = Dimensions.get('window');
 const PARTICLE_COUNT = 20;
 const FEATURE_ANIMATION_DELAY = 80;
 
+// Configuration - replace with your actual values
+const RAZORPAY_KEY_ID = 'rzp_test_5mWhr2b2Z5jFgc';
+const COMPANY_NAME = 'HealthFit Pro';
+const COMPANY_LOGO = 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fletsenhance.io%2F&psig=AOvVaw2xvlTE9CM-a2S8muiEOqP4&ust=1751953520200000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCKCgv8yFqo4DFQAAAAAdAAAAABAE'
+const API_BASE_URL = 'https://a2f8-115-124-42-212.ngrok-free.app/api/v1';
+
 export default function SubscriptionScreen() {
+  const { user } = useUser();
+  const userEmail = user?.primaryEmailAddress?.emailAddress;
   const [selectedPlan, setSelectedPlan] = useState<'6month' | '1year'>('1year');
   const [particlePositions, setParticlePositions] = useState<Array<any>>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [hasSubscription, setHasSubscription] = useState(false);
   
+  // Animation refs
   const headerAnimation = useRef(new Animated.Value(0)).current;
   const plansAnimation = useRef(new Animated.Value(0)).current;
   const featuresAnimation = useRef(new Animated.Value(0)).current;
@@ -42,9 +55,41 @@ export default function SubscriptionScreen() {
     }))
   ).current;
 
+  // Check subscription status on mount
+  useEffect(() => {
+    const checkSubscription = async () => {
+      if (!userEmail) return;
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/subscriptions/status`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email: userEmail })
+        });
+        
+        const data = await response.json();
+        setHasSubscription(data.isActive);
+        
+        if (data.isActive) {
+          Alert.alert(
+            'Premium Member',
+            'You already have an active subscription!',
+            [{ text: 'OK', onPress: () => router.back() }]
+          );
+        }
+      } catch (error) {
+        console.error('Subscription check error:', error);
+      }
+    };
+
+    checkSubscription();
+  }, [userEmail]);
+
   // Initialize animations
   useEffect(() => {
-    // Create particle positions
+    // Particle positions
     const particles = Array(PARTICLE_COUNT).fill(null).map((_, index) => {
       const isLarge = index < 6;
       return {
@@ -72,8 +117,8 @@ export default function SubscriptionScreen() {
     
     setParticlePositions(particles);
 
-    // Animate entrance sequence
-    const animationSequence = Animated.stagger(300, [
+    // Entrance animations
+    Animated.stagger(300, [
       Animated.timing(headerAnimation, {
         toValue: 1,
         duration: 1000,
@@ -98,11 +143,9 @@ export default function SubscriptionScreen() {
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       })
-    ]);
+    ]).start(() => setIsLoaded(true));
 
-    animationSequence.start(() => setIsLoaded(true));
-
-    // Animate particles
+    // Particle animations
     particleAnimations.forEach((anim, index) => {
       const particle = particles[index];
       if (!particle) return;
@@ -166,6 +209,7 @@ export default function SubscriptionScreen() {
       title: 'Premium',
       duration: '6 Months',
       price: '₹110',
+      priceInPaise: 11000,
       originalPrice: '₹300',
       discount: '63% OFF',
       monthlyPrice: '₹18/month',
@@ -178,6 +222,7 @@ export default function SubscriptionScreen() {
       title: 'Premium Plus',
       duration: '1 Year',
       price: '₹199',
+      priceInPaise: 19900,
       originalPrice: '₹600',
       discount: '67% OFF',
       monthlyPrice: '₹16/month',
@@ -196,7 +241,7 @@ export default function SubscriptionScreen() {
     },
     {
       icon: 'chart-line',
-      title: 'Advanced Health Analytics',
+      title: 'Advanced Analytics',
       description: 'Detailed health insights and tracking',
       color: '#4FC3F7'
     },
@@ -208,21 +253,9 @@ export default function SubscriptionScreen() {
     },
     {
       icon: 'dumbbell',
-      title: 'Fitness Pro Workouts',
+      title: 'Fitness Pro',
       description: 'Personalized workout routines',
       color: '#BA68C8'
-    },
-    {
-      icon: 'account-circle-outline',
-      title: 'Premium Profile Features',
-      description: 'Enhanced profile customization',
-      color: '#FF6B6B'
-    },
-    {
-      icon: 'cloud-sync',
-      title: 'Cloud Sync',
-      description: 'Sync across all your devices',
-      color: '#26C6DA'
     }
   ];
 
@@ -231,29 +264,128 @@ export default function SubscriptionScreen() {
     setSelectedPlan(planId);
   };
 
-  const handleSubscribe = () => {
+  const createRazorpayOrder = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/subscriptions/create-order`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          planId: selectedPlan,
+          amount: subscriptionPlans.find(p => p.id === selectedPlan)?.priceInPaise
+        })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Order creation error:', error);
+      throw error;
+    }
+  };
+
+  const verifyPayment = async (paymentData: any) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/subscriptions/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...paymentData,
+          email: userEmail
+        })
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Payment verification error:', error);
+      throw error;
+    }
+  };
+
+  const handleSubscribe = async () => {
+    if (isProcessing || !userEmail || hasSubscription) return;
+    
+    setIsProcessing(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     
-    const plan = subscriptionPlans.find(p => p.id === selectedPlan);
-    Alert.alert(
-      'Subscription Confirmation',
-      `You're about to subscribe to ${plan?.title} for ${plan?.price}. This will unlock all premium features!`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
+    try {
+      const plan = subscriptionPlans.find(p => p.id === selectedPlan);
+      if (!plan) throw new Error('Plan not found');
+
+      // Step 1: Create order
+      const { orderId } = await createRazorpayOrder();
+       if (!RazorpayCheckout) {
+    console.error('RazorpayCheckout is not available');
+    Alert.alert('Error', 'Payment service is not available');
+    return;
+}
+      // Step 2: Open Razorpay
+      const options = {
+        description: `${plan.title} Subscription`,
+        image: COMPANY_LOGO,
+        currency: 'INR',
+        key: RAZORPAY_KEY_ID,
+        amount: plan.priceInPaise,
+        name: COMPANY_NAME,
+        order_id: orderId,
+        prefill: {
+          email: userEmail,
+          name: user?.fullName || 'Customer'
         },
-        {
-          text: 'Subscribe',
-          onPress: () => {
-            // Here you would integrate with your payment system
-            Alert.alert('Success!', 'Subscription activated successfully!', [
-              { text: 'OK', onPress: () => router.back() }
-            ]);
-          }
-        }
-      ]
-    );
+        theme: { color: '#64FFDA' }
+      };
+       
+    RazorpayCheckout.open(options)
+  .then(async (data) => {
+    console.log('Payment successful, data received:', data);
+    
+    try {
+      // Step 3: Verify payment
+      await verifyPayment({
+        razorpay_order_id: data.razorpay_order_id,
+        razorpay_payment_id: data.razorpay_payment_id,
+        razorpay_signature: data.razorpay_signature
+      });
+      
+      console.log('Payment verification successful');
+      
+      // Success
+      Alert.alert(
+        'Welcome to Premium!',
+        'Your subscription is now active',
+        [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+      );
+    } catch (verificationError) {
+      console.error('Payment verification failed:', verificationError);
+      Alert.alert(
+        'Payment Verification Failed',
+        'Payment was successful but verification failed. Please contact support.',
+        [{ text: 'OK' }]
+      );
+    }
+  })
+  .catch((error) => {
+    console.error('Razorpay checkout error:', error);
+    if (!error.description?.includes('Cancelled')) {
+      Alert.alert(
+        'Payment Failed',
+        error.description || 'Payment could not be completed',
+        [{ text: 'OK' }]
+      );
+    }
+  })
+  .finally(() => setIsProcessing(false));
+
+    } catch (error) {
+      console.error('Subscription error:', error);
+      Alert.alert(
+        'Error',
+        'Failed to process subscription. Please try again.',
+        [{ text: 'OK' }]
+      );
+      setIsProcessing(false);
+    }
   };
 
   const handleBack = () => {
@@ -261,20 +393,27 @@ export default function SubscriptionScreen() {
     router.back();
   };
 
+  if (!user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#64FFDA" />
+      </View>
+    );
+  }
+
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="light-content" translucent />
       <SafeAreaView style={styles.container}>
-        {/* Dynamic Background */}
+        {/* Background Particles */}
         <View style={styles.backgroundContainer}>
           <LinearGradient
-            colors={['#05070D', '#0D0E20', '#1A1240', '#050509']}
+            colors={['#05070D', '#0D0E20', '#1A1240']}
             style={styles.backgroundGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           />
-
-          {/* Animated Particles */}
+          
           {particlePositions.map((particle, index) => (
             <Animated.View
               key={`particle-${index}`}
@@ -285,7 +424,6 @@ export default function SubscriptionScreen() {
                   height: particle.size,
                   backgroundColor: particle.color,
                   shadowColor: particle.glowColor,
-                  shadowOpacity: 0.1,
                   transform: [
                     {
                       translateX: Animated.add(
@@ -307,10 +445,7 @@ export default function SubscriptionScreen() {
                       }),
                     },
                   ],
-                  opacity: Animated.multiply(
-                    particleAnimations[index].opacity,
-                    0.25
-                  ),
+                  opacity: particleAnimations[index].opacity,
                 },
               ]}
             />
@@ -320,23 +455,20 @@ export default function SubscriptionScreen() {
         <ScrollView 
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          bounces={true}
         >
           {/* Header */}
-          <Animated.View 
-            style={[
-              styles.headerContainer,
-              {
-                opacity: headerAnimation,
-                transform: [{
-                  translateY: headerAnimation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-50, 0]
-                  })
-                }]
-              }
-            ]}
-          >
+          <Animated.View style={[
+            styles.headerContainer,
+            {
+              opacity: headerAnimation,
+              transform: [{
+                translateY: headerAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-50, 0]
+                })
+              }]
+            }
+          ]}>
             <Pressable style={styles.backButton} onPress={handleBack}>
               <MaterialCommunityIcons name="arrow-left" size={24} color="#64FFDA" />
             </Pressable>
@@ -355,21 +487,19 @@ export default function SubscriptionScreen() {
             </View>
           </Animated.View>
 
-          {/* Subscription Plans */}
-          <Animated.View 
-            style={[
-              styles.plansContainer,
-              {
-                opacity: plansAnimation,
-                transform: [{
-                  translateY: plansAnimation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [30, 0]
-                  })
-                }]
-              }
-            ]}
-          >
+          {/* Plans */}
+          <Animated.View style={[
+            styles.plansContainer,
+            {
+              opacity: plansAnimation,
+              transform: [{
+                translateY: plansAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [30, 0]
+                })
+              }]
+            }
+          ]}>
             {subscriptionPlans.map((plan) => (
               <Pressable
                 key={plan.id}
@@ -378,12 +508,9 @@ export default function SubscriptionScreen() {
                   selectedPlan === plan.id && styles.selectedPlan
                 ]}
                 onPress={() => handlePlanSelect(plan.id as '6month' | '1year')}
+                disabled={hasSubscription}
               >
                 <View style={styles.planCardContainer}>
-                  {/* Glass background */}
-                  <View style={styles.planGlassBackground} />
-                  
-                  {/* Gradient overlay */}
                   <LinearGradient
                     colors={plan.gradientColors}
                     style={styles.planGradientOverlay}
@@ -391,19 +518,14 @@ export default function SubscriptionScreen() {
                     end={{ x: 1, y: 1 }}
                   />
                   
-                  {/* Border glow */}
-                  <View 
-                    style={[
-                      styles.planBorderGlow,
-                      selectedPlan === plan.id && {
-                        borderColor: `${plan.color}60`,
-                        shadowColor: plan.color,
-                        shadowOpacity: 0.4
-                      }
-                    ]} 
-                  />
+                  <View style={[
+                    styles.planBorderGlow,
+                    selectedPlan === plan.id && {
+                      borderColor: `${plan.color}60`,
+                      shadowColor: plan.color,
+                    }
+                  ]} />
                   
-                  {/* Popular badge */}
                   {plan.popular && (
                     <View style={[styles.popularBadge, { backgroundColor: `${plan.color}20` }]}>
                       <MaterialCommunityIcons name="star" size={16} color={plan.color} />
@@ -411,7 +533,6 @@ export default function SubscriptionScreen() {
                     </View>
                   )}
                   
-                  {/* Content */}
                   <View style={styles.planContent}>
                     <Text style={styles.planTitle}>{plan.title}</Text>
                     <Text style={styles.planDuration}>{plan.duration}</Text>
@@ -428,7 +549,6 @@ export default function SubscriptionScreen() {
                     <Text style={styles.monthlyPrice}>{plan.monthlyPrice}</Text>
                   </View>
                   
-                  {/* Selection indicator */}
                   <View style={styles.selectionIndicator}>
                     <MaterialCommunityIcons
                       name={selectedPlan === plan.id ? "check-circle" : "circle-outline"}
@@ -441,22 +561,20 @@ export default function SubscriptionScreen() {
             ))}
           </Animated.View>
 
-          {/* Features List */}
-          <Animated.View 
-            style={[
-              styles.featuresContainer,
-              {
-                opacity: featuresAnimation,
-                transform: [{
-                  translateY: featuresAnimation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [40, 0]
-                  })
-                }]
-              }
-            ]}
-          >
-            <Text style={styles.featuresTitle}>What's Included</Text>
+          {/* Features */}
+          <Animated.View style={[
+            styles.featuresContainer,
+            {
+              opacity: featuresAnimation,
+              transform: [{
+                translateY: featuresAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [40, 0]
+                })
+              }]
+            }
+          ]}>
+            <Text style={styles.featuresTitle}>Premium Features</Text>
             
             {premiumFeatures.map((feature, index) => (
               <View key={index} style={styles.featureItem}>
@@ -481,40 +599,61 @@ export default function SubscriptionScreen() {
           </Animated.View>
 
           {/* Subscribe Button */}
-          <Animated.View 
-            style={[
-              styles.buttonContainer,
-              {
-                opacity: buttonAnimation,
-                transform: [{
-                  translateY: buttonAnimation.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [30, 0]
-                  })
-                }]
-              }
-            ]}
-          >
-            <Pressable style={styles.subscribeButton} onPress={handleSubscribe}>
+          <Animated.View style={[
+            styles.buttonContainer,
+            {
+              opacity: buttonAnimation,
+              transform: [{
+                translateY: buttonAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [30, 0]
+                })
+              }]
+            }
+          ]}>
+            <Pressable 
+              style={[
+                styles.subscribeButton,
+                (isProcessing || hasSubscription) && styles.processingButton
+              ]} 
+              onPress={handleSubscribe}
+              disabled={isProcessing || hasSubscription}
+            >
               <LinearGradient
-                colors={['#21705d', '#2a7596', '#BA68C8']}
+                colors={
+                  hasSubscription ? ['#10B981', '#059669'] :
+                  isProcessing ? ['#6B7280', '#4B5563'] : 
+                  ['#21705d', '#2a7596', '#BA68C8']
+                }
                 style={styles.subscribeGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.subscribeText}>
-                  Subscribe Now - {subscriptionPlans.find(p => p.id === selectedPlan)?.price}
-                </Text>
-                <MaterialCommunityIcons name="arrow-right" size={24} color="#FFFFFF" />
+                {isProcessing ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : hasSubscription ? (
+                  <Text style={styles.subscribeText}>Premium Active</Text>
+                ) : (
+                  <>
+                    <Text style={styles.subscribeText}>
+                      Subscribe Now - {subscriptionPlans.find(p => p.id === selectedPlan)?.price}
+                    </Text>
+                    <MaterialCommunityIcons name="arrow-right" size={24} color="#FFFFFF" />
+                  </>
+                )}
               </LinearGradient>
             </Pressable>
             
             <Text style={styles.termsText}>
-              By subscribing, you agree to our Terms of Service and Privacy Policy
+              By subscribing, you agree to our Terms and Privacy Policy
             </Text>
+            
+            <View style={styles.paymentSecurityContainer}>
+              <MaterialCommunityIcons name="shield-check" size={16} color="#64FFDA" />
+              <Text style={styles.paymentSecurityText}>Secured by Razorpay</Text>
+            </View>
           </Animated.View>
 
-          {/* Bottom Padding */}
           <View style={{ height: 50 }} />
         </ScrollView>
       </SafeAreaView>
@@ -527,17 +666,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0A0E1A',
   },
-  
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0A0E1A'
+  },
   backgroundContainer: {
     position: 'absolute',
     width: '100%',
     height: '100%',
   },
-  
   backgroundGradient: {
     flex: 1,
   },
-  
   particle: {
     position: 'absolute',
     borderRadius: 1000,
@@ -545,18 +687,15 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
   },
-  
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 20,
   },
-  
   headerContainer: {
     alignItems: 'center',
     marginBottom: 30,
     position: 'relative',
   },
-  
   backButton: {
     position: 'absolute',
     left: 0,
@@ -566,18 +705,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(100, 255, 218, 0.1)',
     zIndex: 10,
   },
-  
   titleContainer: {
     alignItems: 'center',
     marginTop: 50,
   },
-  
   titleGradient: {
     borderRadius: 15,
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
-  
   title: {
     fontSize: 32,
     fontWeight: '800',
@@ -585,7 +721,6 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textAlign: 'center',
   },
-  
   subtitle: {
     fontSize: 16,
     color: '#94A3B8',
@@ -593,7 +728,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     letterSpacing: 1,
   },
-  
   subtitleUnderline: {
     width: 80,
     height: 2,
@@ -601,43 +735,23 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 1,
   },
-  
   plansContainer: {
     marginBottom: 40,
   },
-  
   planCard: {
     marginBottom: 20,
     borderRadius: 24,
     overflow: 'hidden',
   },
-  
   selectedPlan: {
     transform: [{ scale: 1.04 }],
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 2,
-    borderColor: '#00E676',
-    borderRadius: 26,
-  }
-,  
-  
+  },
   planCardContainer: {
     borderRadius: 24,
     position: 'relative',
     overflow: 'hidden',
     minHeight: 180,
   },
-  
-  planGlassBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 24,
-  },
-  
   planGradientOverlay: {
     position: 'absolute',
     top: 0,
@@ -646,7 +760,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 24,
   },
-  
   planBorderGlow: {
     position: 'absolute',
     top: 0,
@@ -660,7 +773,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
   },
-  
   popularBadge: {
     position: 'absolute',
     top: 15,
@@ -672,82 +784,69 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     zIndex: 10,
   },
-  
   popularText: {
     fontSize: 12,
     fontWeight: '700',
     marginLeft: 4,
     letterSpacing: 0.5,
   },
-  
   planContent: {
     padding: 24,
     alignItems: 'center',
     position: 'relative',
     zIndex: 5,
   },
-  
   planTitle: {
     fontSize: 24,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 8,
   },
-  
   planDuration: {
     fontSize: 16,
     color: '#94A3B8',
     marginBottom: 16,
   },
-  
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
   },
-  
   originalPrice: {
     fontSize: 25,
     color: '#64748B',
     textDecorationLine: 'line-through',
     marginRight: 12,
   },
-  
   currentPrice: {
     fontSize: 36,
     fontWeight: '800',
     letterSpacing: 1,
   },
-  
   discountBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     marginBottom: 8,
   },
-  
   discountText: {
     fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  
   monthlyPrice: {
     fontSize: 14,
     color: '#94A3B8',
   },
-  
   selectionIndicator: {
     position: 'absolute',
     top: 20,
     left: 20,
     zIndex: 10,
   },
-  
   featuresContainer: {
     marginBottom: 30,
   },
-  
   featuresTitle: {
     fontSize: 24,
     fontWeight: '700',
@@ -755,7 +854,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
   },
-  
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -766,7 +864,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(100, 255, 218, 0.1)',
   },
-  
   featureIcon: {
     width: 48,
     height: 48,
@@ -775,29 +872,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 16,
   },
-  
   featureContent: {
     flex: 1,
   },
-  
   featureTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: 4,
   },
-  
   featureDescription: {
     fontSize: 14,
     color: '#94A3B8',
     lineHeight: 20,
   },
-  
   buttonContainer: {
     alignItems: 'center',
     marginBottom: 20,
   },
-  
   subscribeButton: {
     borderRadius: 20,
     overflow: 'hidden',
@@ -807,7 +899,9 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
   },
-  
+  processingButton: {
+    opacity: 0.8,
+  },
   subscribeGradient: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -815,7 +909,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 16,
   },
-  
   subscribeText: {
     fontSize: 18,
     fontWeight: '700',
@@ -823,12 +916,21 @@ const styles = StyleSheet.create({
     marginRight: 8,
     letterSpacing: 0.5,
   },
-  
   termsText: {
     fontSize: 12,
     color: '#64748B',
     textAlign: 'center',
     paddingHorizontal: 20,
     lineHeight: 16,
+  },
+  paymentSecurityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  paymentSecurityText: {
+    fontSize: 12,
+    color: '#64FFDA',
+    marginLeft: 4,
   },
 });
