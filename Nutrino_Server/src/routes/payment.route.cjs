@@ -108,7 +108,7 @@ router.post('/verify', async (req, res) => {
     
     // Verify the payment signature
     const generatedSignature = crypto
-      .createHmac('sha256', "kjwbasjkbjkbkasbkb")
+      .createHmac('sha256', "43Ar8AGzM575mKqbuhIuuxXo")
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
     console.log('Generated signature:', generatedSignature);
@@ -117,7 +117,7 @@ router.post('/verify', async (req, res) => {
     }
 
     // Find the subscription record
-    const subscription = await prisma.subscription.findUnique({
+    const subscription = await prisma.subscription.findFirst({
       where: { razorpayOrderId: razorpay_order_id }
     });
     console.log('Found subscription:', subscription);
