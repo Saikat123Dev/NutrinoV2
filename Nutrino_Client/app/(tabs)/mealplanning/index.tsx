@@ -8,7 +8,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Dimensions, Easing, FlatList, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import PremiumGuard from '@/components/PremiumGuard';
 const { width, height } = Dimensions.get('window');
 const PARTICLE_COUNT = 25;
 
@@ -184,6 +184,7 @@ export default function MealPlanningScreen() {
 
   return (
     <>
+      <PremiumGuard>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <SafeAreaView style={styles.container}>
         {/* Dynamic Background */}
@@ -271,6 +272,7 @@ export default function MealPlanningScreen() {
           }
         </ScrollView>
       </SafeAreaView>
+       </PremiumGuard>
     </>
   );
 }

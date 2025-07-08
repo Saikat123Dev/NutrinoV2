@@ -8,7 +8,7 @@ import { useUser } from '@clerk/clerk-expo';
 
 export default function PremiumGuard({ children }) {
   const { user } = useUser();
-
+  console.log('User in PremiumGuard:', user);
   useEffect(() => {
     const verifySubscription = async () => {
       try {

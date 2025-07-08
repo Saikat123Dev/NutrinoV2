@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { UpdateService } from '@/components/UpdateService';
-
+import PremiumGuard from '@/components/PremiumGuard';
 const { width, height } = Dimensions.get('window');
 const PARTICLE_COUNT = 25;
 const FEATURE_ANIMATION_DELAY = 100;
@@ -284,8 +284,8 @@ export default function HomeScreen() {
 
   return (
     <>
-   
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+  <PremiumGuard>
+     <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <SafeAreaView style={styles.container}>
         {/* Dynamic Background */}
         <View style={styles.backgroundContainer}>
@@ -523,7 +523,7 @@ export default function HomeScreen() {
           <View style={{ height: 50 }} />
         </ScrollView>
       </SafeAreaView>
-    
+   </PremiumGuard>
     </>
   );
 }

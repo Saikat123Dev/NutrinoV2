@@ -14,7 +14,9 @@ import {
   View,
   StatusBar,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Modal,
+  TouchableOpacity
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import RazorpayCheckout from 'react-native-razorpay';
@@ -30,6 +32,100 @@ const COMPANY_NAME = 'HealthFit Pro';
 const COMPANY_LOGO = 'https://www.google.com/url?sa=i&url=https%3A%2F%2Fletsenhance.io%2F&psig=AOvVaw2xvlTE9CM-a2S8muiEOqP4&ust=1751953520200000&source=images&cd=vfe&opi=89978449&ved=0CBQQjRxqFwoTCKCgv8yFqo4DFQAAAAAdAAAAABAE'
 const API_BASE_URL = 'https://nutrinov2.onrender.com/api/v1';
 
+// Custom Alert Component
+const CustomAlert = ({ visible, title, message, buttons, onClose }:any) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 7,
+          useNativeDriver: true,
+        })
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.8,
+          duration: 200,
+          useNativeDriver: true,
+        })
+      ]).start();
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <Modal transparent visible={visible} animationType="none">
+      <Animated.View style={[styles.alertOverlay, { opacity: fadeAnim }]}>
+        <Animated.View style={[
+          styles.alertContainer,
+          { transform: [{ scale: scaleAnim }] }
+        ]}>
+          <LinearGradient
+            colors={['#1e293b', '#0f172a']}
+            style={styles.alertGradient}
+          >
+            <View style={styles.alertIconContainer}>
+              <MaterialCommunityIcons 
+                name={title.includes('Welcome') ? 'crown' : title.includes('Error') ? 'alert-circle' : 'information'} 
+                size={32} 
+                color={title.includes('Welcome') ? '#64FFDA' : title.includes('Error') ? '#EF4444' : '#3B82F6'} 
+              />
+            </View>
+            
+            <Text style={styles.alertTitle}>{title}</Text>
+            <Text style={styles.alertMessage}>{message}</Text>
+            
+            <View style={styles.alertButtonContainer}>
+              {buttons?.map((button, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.alertButton,
+                    index === 0 && styles.alertButtonPrimary
+                  ]}
+                  onPress={() => {
+                    button.onPress?.();
+                    onClose();
+                  }}
+                >
+                  <LinearGradient
+                    colors={index === 0 ? ['#21705d', '#2a7596'] : ['#374151', '#4B5563']}
+                    style={styles.alertButtonGradient}
+                  >
+                    <Text style={[
+                      styles.alertButtonText,
+                      index === 0 && styles.alertButtonTextPrimary
+                    ]}>
+                      {button.text}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </LinearGradient>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+};
+
 export default function SubscriptionScreen() {
   const { user } = useUser();
   const userEmail = user?.primaryEmailAddress?.emailAddress;
@@ -38,6 +134,12 @@ export default function SubscriptionScreen() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [hasSubscription, setHasSubscription] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: []
+  });
   
   // Animation refs
   const headerAnimation = useRef(new Animated.Value(0)).current;
@@ -54,6 +156,20 @@ export default function SubscriptionScreen() {
       float: new Animated.Value(0)
     }))
   ).current;
+
+  // Custom alert function
+  const showAlert = (title: string, message: string, buttons: any[] = [{ text: 'OK', onPress: () => {} }]) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      buttons
+    });
+  };
+
+  const closeAlert = () => {
+    setAlertConfig(prev => ({ ...prev, visible: false }));
+  };
 
   // Check subscription status on mount
   useEffect(() => {
@@ -73,14 +189,22 @@ export default function SubscriptionScreen() {
         setHasSubscription(data.isActive);
         
         if (data.isActive) {
-          Alert.alert(
+          showAlert(
             'Premium Member',
-            'You already have an active subscription!',
-            [{ text: 'OK', onPress: () => router.back() }]
+            'You already have an active subscription! Enjoy all premium features.',
+            [{ 
+              text: 'Continue', 
+              onPress: () => router.replace('/(tabs)') 
+            }]
           );
         }
       } catch (error) {
         console.error('Subscription check error:', error);
+        showAlert(
+          'Connection Error',
+          'Unable to check subscription status. Please check your internet connection.',
+          [{ text: 'OK', onPress: () => {} }]
+        );
       }
     };
 
@@ -315,11 +439,18 @@ export default function SubscriptionScreen() {
 
       // Step 1: Create order
       const { orderId } = await createRazorpayOrder();
-       if (!RazorpayCheckout) {
-    console.error('RazorpayCheckout is not available');
-    Alert.alert('Error', 'Payment service is not available');
-    return;
-}
+      
+      if (!RazorpayCheckout) {
+        console.error('RazorpayCheckout is not available');
+        showAlert(
+          'Payment Error',
+          'Payment service is currently unavailable. Please try again later.',
+          [{ text: 'OK', onPress: () => {} }]
+        );
+        setIsProcessing(false);
+        return;
+      }
+
       // Step 2: Open Razorpay
       const options = {
         description: `${plan.title} Subscription`,
@@ -336,53 +467,60 @@ export default function SubscriptionScreen() {
         theme: { color: '#64FFDA' }
       };
        
-    RazorpayCheckout.open(options)
-  .then(async (data) => {
-    console.log('Payment successful, data received:', data);
-    
-    try {
-      // Step 3: Verify payment
-      await verifyPayment({
-        razorpay_order_id: data.razorpay_order_id,
-        razorpay_payment_id: data.razorpay_payment_id,
-        razorpay_signature: data.razorpay_signature
-      });
-      
-      console.log('Payment verification successful');
-      
-      // Success
-      Alert.alert(
-        'Welcome to Premium!',
-        'Your subscription is now active',
-        [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
-      );
-    } catch (verificationError) {
-      console.error('Payment verification failed:', verificationError);
-      Alert.alert(
-        'Payment Verification Failed',
-        'Payment was successful but verification failed. Please contact support.',
-        [{ text: 'OK' }]
-      );
-    }
-  })
-  .catch((error) => {
-    console.error('Razorpay checkout error:', error);
-    if (!error.description?.includes('Cancelled')) {
-      Alert.alert(
-        'Payment Failed',
-        error.description || 'Payment could not be completed',
-        [{ text: 'OK' }]
-      );
-    }
-  })
-  .finally(() => setIsProcessing(false));
+      RazorpayCheckout.open(options)
+        .then(async (data) => {
+          console.log('Payment successful, data received:', data);
+          
+          try {
+            // Step 3: Verify payment
+            await verifyPayment({
+              razorpay_order_id: data.razorpay_order_id,
+              razorpay_payment_id: data.razorpay_payment_id,
+              razorpay_signature: data.razorpay_signature
+            });
+            
+            console.log('Payment verification successful');
+            
+            // Success
+            showAlert(
+              'Welcome to Premium! 🎉',
+              `Congratulations! Your ${plan.title} subscription is now active. Enjoy all premium features and unlock your full potential!`,
+              [{ 
+                text: 'Start Exploring', 
+                onPress: () => router.replace('/(tabs)') 
+              }]
+            );
+            
+            // Update subscription status
+            setHasSubscription(true);
+            
+          } catch (verificationError) {
+            console.error('Payment verification failed:', verificationError);
+            showAlert(
+              'Payment Verification Issue',
+              'Your payment was successful, but we encountered an issue verifying it. Please contact our support team for assistance.',
+              [{ text: 'Contact Support', onPress: () => {} }]
+            );
+          }
+        })
+        .catch((error) => {
+          console.error('Razorpay checkout error:', error);
+          if (!error.description?.includes('Cancelled')) {
+            showAlert(
+              'Payment Failed',
+              error.description || 'We encountered an issue processing your payment. Please try again or contact support.',
+              [{ text: 'Try Again', onPress: () => {} }]
+            );
+          }
+        })
+        .finally(() => setIsProcessing(false));
 
     } catch (error) {
       console.error('Subscription error:', error);
-      Alert.alert(
-        'Error',
-        'Failed to process subscription. Please try again.',
-        [{ text: 'OK' }]
+      showAlert(
+        'Subscription Error',
+        'Unable to process your subscription request. Please check your connection and try again.',
+        [{ text: 'Retry', onPress: () => {} }]
       );
       setIsProcessing(false);
     }
@@ -397,6 +535,7 @@ export default function SubscriptionScreen() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#64FFDA" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -630,9 +769,15 @@ export default function SubscriptionScreen() {
                 end={{ x: 1, y: 0 }}
               >
                 {isProcessing ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <View style={styles.processingContainer}>
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <Text style={styles.processingText}>Processing...</Text>
+                  </View>
                 ) : hasSubscription ? (
-                  <Text style={styles.subscribeText}>Premium Active</Text>
+                  <View style={styles.activeContainer}>
+                    <MaterialCommunityIcons name="check-circle" size={24} color="#FFFFFF" />
+                    <Text style={styles.subscribeText}>Premium Active</Text>
+                  </View>
                 ) : (
                   <>
                     <Text style={styles.subscribeText}>
@@ -656,6 +801,15 @@ export default function SubscriptionScreen() {
 
           <View style={{ height: 50 }} />
         </ScrollView>
+
+        {/* Custom Alert */}
+        <CustomAlert
+          visible={alertConfig.visible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttons={alertConfig.buttons}
+          onClose={closeAlert}
+        />
       </SafeAreaView>
     </>
   );
@@ -671,6 +825,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#0A0E1A'
+  },
+  loadingText: {
+    color: '#64FFDA',
+    fontSize: 16,
+    marginTop: 16,
+    fontWeight: '600'
   },
   backgroundContainer: {
     position: 'absolute',
@@ -691,6 +851,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
+
   headerContainer: {
     alignItems: 'center',
     marginBottom: 30,
@@ -727,6 +888,84 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: 10,
     letterSpacing: 1,
+  },
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  alertContainer: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  alertGradient: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  alertIconContainer: {
+    marginBottom: 16,
+  },
+  alertTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  alertMessage: {
+    fontSize: 16,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  alertButtonContainer: {
+    width: '100%',
+    gap: 12,
+  },
+  alertButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  alertButtonPrimary: {
+    // Additional styling for primary button if needed
+  },
+  alertButtonGradient: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  alertButtonTextPrimary: {
+    fontWeight: '700',
+  },
+
+  // Processing and Active States
+  processingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  processingText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginLeft: 8,
+    letterSpacing: 0.5,
+  },
+  activeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   subtitleUnderline: {
     width: 80,

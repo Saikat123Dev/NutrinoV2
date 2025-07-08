@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Easing, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
+import PremiumGuard from '@/components/PremiumGuard';
 const { width, height } = Dimensions.get('window');
 const PARTICLE_COUNT = 25;
 
@@ -265,6 +265,7 @@ export default function WorkoutScreen() {
 
   return (
     <>
+   <PremiumGuard>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       <SafeAreaView style={styles.container}>
         {/* Dynamic Background - Keep existing animation */}
@@ -535,6 +536,7 @@ export default function WorkoutScreen() {
           <View style={{ height: 40 }} />
         </ScrollView>
       </SafeAreaView>
+     </PremiumGuard>
     </>
   );
 }

@@ -22,7 +22,7 @@
         "buildType": "apk"
       },
       "distribution": "internal",
-      "channel": "development"
+      "channel": "production"
     }
   },
   "submit": {

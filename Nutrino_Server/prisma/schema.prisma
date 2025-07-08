@@ -43,7 +43,7 @@ model Subscription {
   userId           Int
   user             User      @relation(fields: [userId], references: [id])
   planId           String    // '6month' or '1year'
-  razorpayOrderId  String
+  razorpayOrderId  String 
   razorpayPaymentId String?
   razorpaySignature String?
   amount           Int       // in paise

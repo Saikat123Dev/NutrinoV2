@@ -176,11 +176,10 @@ router.get('/user/:email', async (req, res) => {
   try {
     const email = req.params.email;
      console.log('Fetching subscription for email:', email);
-     const user = await prisma.user.findUnique({
-      where:{
-        email
-      }
-     })
+      const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true }
+    });
      if(!user) {
       return res.status(404).json({ error: 'User not found' });
      }
