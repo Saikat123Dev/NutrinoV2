@@ -3,12 +3,12 @@ import { ClerkLoaded, ClerkProvider } from '@clerk/clerk-expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Slot, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import 'react-native-reanimated';
-
+import PremiumGuard from '@/components/PremiumGuard';
 // Optimized token cache with AsyncStorage
 const tokenCache = {
   async getToken(key: string) {
@@ -128,10 +128,15 @@ export default function RootLayout() {
       tokenCache={tokenCache}
     >
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+       
         <ClerkLoaded>
+         
           <RootLayoutNav />
           <StatusBar style="auto" />
+          
+       
         </ClerkLoaded>
+       
       </ThemeProvider>
     </ClerkProvider>
   );
