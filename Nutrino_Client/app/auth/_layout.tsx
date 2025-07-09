@@ -5,10 +5,10 @@ import axios from 'axios';
 
 const API_BASE_URL = 'https://nutrinov2.onrender.com/api/v1';
 
-export const createSubscriptionOrder = async (userId, planId) => {
+export const createSubscriptionOrder = async (email, planId) => {
   try {
     const response = await axios.post(`${API_BASE_URL}/subscription/create-order`, {
-      userId,
+      email,
       planId
     });
     return response.data;
@@ -33,7 +33,7 @@ export const checkUserSubscription = async (email) => {
     const response = await axios.get(`${API_BASE_URL}/subscriptions/user/${email}`);
     return response.data;
   } catch (error) {
-    console.error('Error checking subscription:', error);
+    console.error('Error checking subscription from _layout:', error);
     throw error;
   }
 };

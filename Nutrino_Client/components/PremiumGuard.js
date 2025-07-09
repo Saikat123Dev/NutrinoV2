@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { checkUserSubscription } from '../configs/subscription';
 import { router } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
@@ -6,39 +6,58 @@ import { useUser } from '@clerk/clerk-expo';
 import { PlanContext } from '@/context/PlanContext';
 
 export default function PremiumGuard({ children }) {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const [subscriptionId, setSubscriptionId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const hasRedirected = useRef(false); // <- controls infinite redirects
 
   useEffect(() => {
+    let isActive = true;
+
     const verifySubscription = async () => {
+      if (!user?.primaryEmailAddress?.emailAddress) {
+        if (!hasRedirected.current) {
+          hasRedirected.current = true;
+          await router.replace('/auth');
+        }
+        return;
+      }
+
       try {
-        const { hasActiveSubscription, subscriptionId } = await checkUserSubscription(
-          user?.primaryEmailAddress?.emailAddress
+        const result = await checkUserSubscription(
+          user.primaryEmailAddress.emailAddress
         );
-        console.log("subscription Id", subscriptionId)
-        setSubscriptionId(subscriptionId); // Set it regardless (will be null if no subscription)
-        setIsLoading(false);
-        
-        if (!hasActiveSubscription) {
-          router.replace('/(tabs)/subscription');
+
+        if (!isActive) return;
+
+        if (result?.hasActiveSubscription) {
+          setSubscriptionId(result.subscriptionId);
+          setIsLoading(false);
+        } else {
+          if (!hasRedirected.current) {
+            hasRedirected.current = true;
+            await router.replace('/(tabs)/subscription');
+          }
         }
       } catch (error) {
-        console.error('Subscription verification error:', error);
-        setIsLoading(false); // Set loading to false before redirect
-        router.replace('/(tabs)/subscription');
+        console.error('Unexpected subscription verification error: from sub', error);
+        if (!hasRedirected.current) {
+          hasRedirected.current = true;
+          await router.replace('/(tabs)/subscription');
+        }
       }
     };
 
-    if (user?.primaryEmailAddress?.emailAddress) {
+    if (isLoaded && !hasRedirected.current) {
       verifySubscription();
-    } else {
-      setIsLoading(false); // Set loading to false before redirect
-      router.replace('/auth');
     }
-  }, [user]);
 
-  if (!user || isLoading) {
+    return () => {
+      isActive = false;
+    };
+  }, [isLoaded, user]);
+
+  if (!isLoaded || isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" />

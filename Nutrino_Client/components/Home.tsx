@@ -31,14 +31,14 @@ export default function HomeScreen() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [plan , setPlan] = useState<string>()
    const planId = usePlan();
-   console.log(planId)
+   console.log("planId",planId)
    useEffect(()=>{
     if(planId == "1year"){
         setPlan("1 Year")
     }else{
         setPlan("6 Months")
     }
-   })
+   },[planId])
 
   const headerAnimation = useRef(new Animated.Value(0)).current;
   const particleAnimations = useRef(
@@ -213,7 +213,7 @@ export default function HomeScreen() {
       primaryColor: '#64FFDA',
       secondaryColor: '#00BCD4',
       gradientColors: ['rgba(100, 255, 218, 0.25)', 'rgba(0, 188, 212, 0.15)', 'rgba(26, 107, 107, 0.1)'],
-      route: 'chatbot',
+      route: '(tabs)/chatbot',
       description: 'AI guidance for optimal health and wellness',
       badge: 'NEW',
       featured: true
@@ -225,7 +225,7 @@ export default function HomeScreen() {
       primaryColor: '#44b33e',
       secondaryColor: '#FF5722',
       gradientColors: ['rgba(255, 107, 107, 0.25)', 'rgba(255, 87, 34, 0.15)', 'rgba(102, 32, 32, 0.1)'],
-      route: 'profile',
+      route: '(tabs)/profile',
       description: 'Save & Edit profile',
       badge: 'EDIT'
     },
@@ -236,7 +236,7 @@ export default function HomeScreen() {
       primaryColor: '#4FC3F7',
       secondaryColor: '#2196F3',
       gradientColors: ['rgba(79, 195, 247, 0.25)', 'rgba(33, 150, 243, 0.15)', 'rgba(42, 79, 117, 0.1)'],
-      route: 'healthreport',
+      route: '(tabs)/healthreport',
       description: 'Health insights',
       badge: 'VIEW'
     },
@@ -247,7 +247,7 @@ export default function HomeScreen() {
       primaryColor: '#FFB74D',
       secondaryColor: '#FF9800',
       gradientColors: ['rgba(255, 183, 77, 0.25)', 'rgba(255, 152, 0, 0.15)', 'rgba(102, 64, 21, 0.1)'],
-      route: 'mealplanning',
+      route: '(tabs)/mealplanning',
       description: 'AI-powered Nutrition Plans (7days)',
       badge: 'PLAN'
     },
@@ -258,7 +258,7 @@ export default function HomeScreen() {
       primaryColor: '#BA68C8',
       secondaryColor: '#9C27B0',
       gradientColors: ['rgba(186, 104, 200, 0.25)', 'rgba(156, 39, 176, 0.15)', 'rgba(82, 38, 107, 0.1)'],
-      route: 'workout',
+      route: '(tabs)/workout',
       description: 'Workout Routines',
       badge: 'NEW'
     }

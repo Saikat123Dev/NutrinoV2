@@ -1,14 +1,12 @@
-import React from 'react'
-import Home from "@/components/Home"
-import PremiumGuard from '@/components/PremiumGuard'
-const index = () => {
-  return (
-    
-      <PremiumGuard>
-      <Home/>
-      </PremiumGuard>
-    
-  )
-}
+import React from 'react';
+import PremiumGuard from '@/components/PremiumGuard';
+import Home from '@/components/Home';
 
-export default index
+export default function Index() {
+  return (
+   <PremiumGuard>
+      <Home />
+      </PremiumGuard>
+   
+  );
+}

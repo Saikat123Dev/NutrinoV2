@@ -21,6 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import RazorpayCheckout from 'react-native-razorpay';
 import { useUser } from '@clerk/clerk-expo';
+import LogoutButton from '@/components/LogoutButton';
 
 const { width, height } = Dimensions.get('window');
 const PARTICLE_COUNT = 20;
@@ -798,7 +799,7 @@ export default function SubscriptionScreen() {
               <Text style={styles.paymentSecurityText}>Secured by Razorpay</Text>
             </View>
           </Animated.View>
-
+         <LogoutButton/>
           <View style={{ height: 50 }} />
         </ScrollView>
 
