@@ -196,7 +196,7 @@ router.get('/user/:email', async (req, res) => {
         createdAt: 'desc'
       }
     });
-
+     const subscriptionId = subscription ? subscription.id : null;
     if (!subscription) {
       return res.status(404).json({ 
         message: 'No active subscription found',
@@ -206,7 +206,8 @@ router.get('/user/:email', async (req, res) => {
 
     res.json({
       hasActiveSubscription: true,
-      subscription: subscription
+      subscription: subscription,
+      subscriptionId: subscriptionId
     });
 
   } catch (error) {
