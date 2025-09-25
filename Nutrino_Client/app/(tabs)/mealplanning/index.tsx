@@ -1,3 +1,4 @@
+import PremiumGuard from '@/components/PremiumGuard';
 import axiosInstance from '@/configs/axios-config';
 import { useUser } from '@clerk/clerk-expo';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -8,14 +9,13 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Dimensions, Easing, FlatList, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PremiumGuard from '@/components/PremiumGuard';
 const { width, height } = Dimensions.get('window');
 const PARTICLE_COUNT = 25;
 
 export default function MealPlanningScreen() {
   // get the current user
   const { user } = useUser();
-  const clerkId: string = user?.id as string;
+  const email: string = user?.primaryEmailAddress?.emailAddress as string;
 
   const [particlePositions, setParticlePositions] = useState<Array<any>>([]);
   const headerAnimation = useRef(new Animated.Value(0)).current;
@@ -49,11 +49,11 @@ export default function MealPlanningScreen() {
           'rgba(79, 195, 247, 0.1)'
         ][Math.floor(Math.random() * 5)],
         glowColor: [
-          '#64FFDA',
-          '#8B45FF',
-          '#FF6B6B',
-          '#FFB74D',
-          '#4FC3F7'
+          '#3F51B5',
+          '#283593',
+          '#34495E',
+          '#2C3E50',
+          '#37474F'
         ][Math.floor(Math.random() * 5)]
       };
     });
@@ -131,11 +131,11 @@ export default function MealPlanningScreen() {
   const [mealPlan, setMealPlan] = useState<Record<string, any> | null>(null);
   const [generating, setGenerating] = useState<boolean>(false);
   const generateMealPlan = async () => {
-    if (!clerkId) return;
+    if (!email) return;
     try {
       setGenerating(true);
-      await axiosInstance.post('/v1/user/mealplan/generate',
-        { clerkId }
+      await axiosInstance.post('/v2/meal/generator',
+        { email }
       )
         .then(res => {
           const resdata = res.data.data
@@ -147,23 +147,27 @@ export default function MealPlanningScreen() {
     setGenerating(false);
   }
 
-  // get curremt 7 day meal plan
+  // get current 7 day meal plan
   const [mealLoading, setMealLoading] = useState<boolean>(false);
   const getLoadedMealPlan = async () => {
     try {
       setMealLoading(true)
-      await axiosInstance.post('/v1/user/mealplan', { clerkId })
+      await axiosInstance.post('/v1/user/mealplan', { email })
         .then(res => {
           const data = res.data.data;
-          // console.log(data);
+          console.log("Loaded existing meal plan:", data);
 
           setMealPlan(data)
         })
     } catch (error) {
       if (axios.isAxiosError?.(error)) {
         const status = error.response?.status;
-        if (status === 404) generateMealPlan() // If meal plan is not there
+        if (status === 404) {
+          console.log("No existing meal plan found");
+          // Don't auto-generate, let user click the button
+        }
       }
+      console.error("Error loading meal plan:", error);
     }
     setMealLoading(false);
   }
@@ -190,7 +194,7 @@ export default function MealPlanningScreen() {
         {/* Dynamic Background */}
         <View style={styles.backgroundContainer}>
           <LinearGradient
-            colors={['#0A0E1A', '#1A1B3A', '#2D1B69', '#0F0F23']}
+            colors={['#0A0E1B', '#1A1B3A', '#2C3E50', '#34495E', '#1A1A2E']}
             style={styles.backgroundGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -253,9 +257,9 @@ export default function MealPlanningScreen() {
 
           <View style={styles.quickActionsContainer}>
             <Pressable style={({ pressed }) => [styles.quickActionButton, { transform: [{ scale: pressed ? 0.95 : 1 }] }]} disabled={generating || mealLoading} onPress={handleActionPress} >
-              <LinearGradient colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']} style={styles.quickActionGradient}>
-                {generating && <ActivityIndicator />}
-                {!generating && <MaterialCommunityIcons name={'auto-fix'} size={24} color={'#4FC3F7'} />}
+              <LinearGradient colors={['#283593', '#3F51B5']} style={styles.quickActionGradient}>
+                {generating && <ActivityIndicator color="#FFFFFF" />}
+                {!generating && <MaterialCommunityIcons name={'auto-fix'} size={24} color={'#FFFFFF'} />}
                 <Text style={styles.quickActionText}>{generating ? "Generating" : "Generate"} plans</Text>
               </LinearGradient>
             </Pressable>
@@ -278,61 +282,220 @@ export default function MealPlanningScreen() {
 }
 
 
-const DayPlanCard = ({ plan }: { plan: Record<string, any> | null }) => {
+const DayPlanCard = ({ plan, index }: { plan: Record<string, any> | null; index: number }) => {
+  const cardAnimation = useRef(new Animated.Value(0)).current;
+  const scaleAnimation = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.timing(cardAnimation, {
+      toValue: 1,
+      duration: 800,
+      delay: index * 100,
+      easing: Easing.out(Easing.back(1.1)),
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   const handleMealPress = () => {
     if (!plan?.day) return;
+    
+    // Animate press effect
+    Animated.sequence([
+      Animated.timing(scaleAnimation, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnimation, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      })
+    ]).start();
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push({ pathname: '/mealplanning/dailyMealPlan', params: { day: plan.day } })
   }
+
+  if (!plan) return null;
+
+  // Professional gradient colors for sophisticated, modern look
+  const dayGradients = [
+    ['#1A1A2E', '#16213E'], // Deep navy professional
+    ['#0F4C75', '#3282B8'], // Professional blue
+    ['#2C3E50', '#4A6741'], // Elegant dark teal
+    ['#34495E', '#5D4E75'], // Sophisticated purple-grey
+    ['#2E3440', '#4C566A'], // Modern dark slate
+    ['#283593', '#3F51B5'], // Corporate indigo
+    ['#37474F', '#455A64']  // Professional blue-grey
+  ];
+
+  const currentGradient = dayGradients[index % dayGradients.length];
+
   return (
-    plan ?
-      <Pressable android_ripple={{ color: "rgba(31, 74, 98, 0.9)" }} style={[styles.nutritionContainer, { marginBottom: 20,backgroundColor: 'rgba(255, 255, 255, 0.08)'}]} onPress={handleMealPress}>
-        <Text style={styles.nutritionTitle}>{plan.dayName}</Text>
-        <View style={styles.nutritionStats}>
-          <View style={styles.nutritionItem}>
-            <MaterialCommunityIcons name="fire" size={22} color="#FFB74D" />
-            <Text style={styles.nutritionValue}>{plan.totalCalories} Cal</Text>
-            <Text style={styles.nutritionLabel}>Calories</Text>
+    <Animated.View
+      style={[
+        {
+          transform: [
+            {
+              translateY: cardAnimation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [50, 0],
+              }),
+            },
+            { scale: scaleAnimation }
+          ],
+          opacity: cardAnimation,
+        }
+      ]}
+    >
+      <Pressable 
+        style={[styles.dayPlanCard, { marginBottom: 20 }]} 
+        onPress={handleMealPress}
+        android_ripple={{ color: "rgba(255, 255, 255, 0.1)" }}
+      >
+        <LinearGradient
+          colors={[`${currentGradient[0]}15`, `${currentGradient[1]}20`]}
+          style={styles.dayPlanGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {/* Floating orbs for visual appeal */}
+          <View style={[styles.floatingOrb, { 
+            backgroundColor: `${currentGradient[0]}20`, 
+            top: 10, 
+            right: 15,
+            width: 60,
+            height: 60
+          }]} />
+          <View style={[styles.floatingOrb, { 
+            backgroundColor: `${currentGradient[1]}15`, 
+            bottom: 15, 
+            left: 10,
+            width: 40,
+            height: 40
+          }]} />
+          
+          {/* Day header with enhanced styling */}
+          <View style={styles.dayHeader}>
+            <View style={styles.dayTitleContainer}>
+              <Text style={styles.dayName}>{plan.dayName}</Text>
+              <Text style={styles.dayNumber}>Day {plan.day}</Text>
+            </View>
+            <View style={[styles.dayBadge, { backgroundColor: currentGradient[0] }]}>
+              <MaterialCommunityIcons name="calendar-today" size={18} color="white" />
+            </View>
           </View>
-          <View style={styles.nutritionItem}>
-            <MaterialCommunityIcons name="food-variant" size={22} color="#66BB6A" />
-            <Text style={styles.nutritionValue}>{plan.totalProtein}g</Text>
-            <Text style={styles.nutritionLabel}>Protein</Text>
+
+          {/* Enhanced nutrition stats grid */}
+          <View style={styles.nutritionGrid}>
+            <View style={styles.nutritionRow}>
+              <View style={styles.nutritionItemEnhanced}>
+                <View style={[styles.iconContainer, { backgroundColor: '#FFD54F30' }]}>
+                  <MaterialCommunityIcons name="fire" size={20} color="#FFD54F" />
+                </View>
+                <Text style={styles.nutritionValueEnhanced}>{plan.totalCalories}</Text>
+                <Text style={styles.nutritionLabelEnhanced}>kcal</Text>
+              </View>
+              
+              <View style={styles.nutritionItemEnhanced}>
+                <View style={[styles.iconContainer, { backgroundColor: '#81C78430' }]}>
+                  <MaterialCommunityIcons name="food-drumstick" size={20} color="#81C784" />
+                </View>
+                <Text style={styles.nutritionValueEnhanced}>{plan.totalProtein}g</Text>
+                <Text style={styles.nutritionLabelEnhanced}>protein</Text>
+              </View>
+
+              <View style={styles.nutritionItemEnhanced}>
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(63, 81, 181, 0.2)' }]}>
+                  <MaterialCommunityIcons name="corn" size={20} color="#3F51B5" />
+                </View>
+                <Text style={styles.nutritionValueEnhanced}>{plan.totalCarbs}g</Text>
+                <Text style={styles.nutritionLabelEnhanced}>carbs</Text>
+              </View>
+
+              <View style={styles.nutritionItemEnhanced}>
+                <View style={[styles.iconContainer, { backgroundColor: '#FF8A6530' }]}>
+                  <MaterialCommunityIcons name="peanut" size={20} color="#FF8A65" />
+                </View>
+                <Text style={styles.nutritionValueEnhanced}>{plan.totalFat}g</Text>
+                <Text style={styles.nutritionLabelEnhanced}>fat</Text>
+              </View>
+            </View>
           </View>
-          <View style={styles.nutritionItem}>
-            <MaterialCommunityIcons name="noodles" size={22} color="#4FC3F7" />
-            <Text style={styles.nutritionValue}>{plan.totalCarbs}g</Text>
-            <Text style={styles.nutritionLabel}>Carbs</Text>
+
+          {/* Progress indicator */}
+          <View style={styles.progressIndicator}>
+            <View style={[styles.progressBar, { backgroundColor: `${currentGradient[0]}40` }]}>
+              <View style={[styles.progressFill, { 
+                backgroundColor: currentGradient[0],
+                width: '85%' // You can make this dynamic based on completion
+              }]} />
+            </View>
+            <Text style={styles.progressText}>Nutrition balanced</Text>
           </View>
-          <View style={styles.nutritionItem}>
-            <MaterialCommunityIcons name="oil" size={22} color="#EF5350" />
-            <Text style={styles.nutritionValue}>{plan.totalFat}g</Text>
-            <Text style={styles.nutritionLabel}>Fat</Text>
-          </View>
-          <View style={styles.nutritionItem}>
-            <MaterialCommunityIcons name="cup-water" size={22} color="#00E676" />
-            <Text style={styles.nutritionValue}>{plan.waterIntake}ml</Text>
-            <Text style={styles.nutritionLabel}>Water</Text>
-          </View>
-        </View>
-        {/* You can add a button or expand to show meals for the day */}
+        </LinearGradient>
       </Pressable>
-      : null
-  )
+    </Animated.View>
+  );
 };
 
 const WeeklyMealPlanList = ({ mealPlan }: { mealPlan: Record<string, any> | null }) => {
+  const listAnimation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(listAnimation, {
+      toValue: 1,
+      duration: 600,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   if (!mealPlan || !mealPlan.dailyPlans?.length) return null;
+
   return (
-    <View style={styles.nutritionSummary}>
-      <Text style={styles.sectionTitle}>7-Day Meal Plan</Text>
+    <Animated.View 
+      style={[
+        styles.nutritionSummary,
+        {
+          opacity: listAnimation,
+          transform: [{
+            translateY: listAnimation.interpolate({
+              inputRange: [0, 1],
+              outputRange: [30, 0],
+            })
+          }]
+        }
+      ]}
+    >
+      <View style={styles.sectionHeader}>
+        <LinearGradient
+          colors={['rgba(63, 81, 181, 0.15)', 'rgba(52, 73, 94, 0.1)']}
+          style={styles.sectionHeaderGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+        >
+          <MaterialCommunityIcons name="calendar-week" size={28} color="#3F51B5" />
+          <View style={styles.sectionHeaderText}>
+            <Text style={styles.sectionTitle}>7-Day Meal Plan</Text>
+            <Text style={styles.sectionSubtitle}>Personalized nutrition journey</Text>
+          </View>
+          <View style={styles.planBadge}>
+            <Text style={styles.planBadgeText}>{mealPlan.dailyPlans.length}</Text>
+          </View>
+        </LinearGradient>
+      </View>
+
       <FlatList
         data={mealPlan.dailyPlans}
         keyExtractor={item => item.day.toString()}
-        renderItem={({ item }) => <DayPlanCard plan={item} />}
+        renderItem={({ item, index }) => <DayPlanCard plan={item} index={index} />}
         showsVerticalScrollIndicator={false}
         scrollEnabled={false}
+        contentContainerStyle={styles.mealPlanList}
       />
-    </View>
+    </Animated.View>
   );
 };
 
@@ -344,7 +507,7 @@ const WeeklyMealPlanList = ({ mealPlan }: { mealPlan: Record<string, any> | null
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0E1A',
+    backgroundColor: '#0A0E1B',
   },
   backgroundContainer: {
     position: 'absolute',
@@ -381,53 +544,251 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 15,
-    padding: 10,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)'
+    padding: 12,
+    borderRadius: 25,
+    backgroundColor: 'rgba(63, 81, 181, 0.2)',
+    backdropFilter: 'blur(10px)',
+    borderWidth: 0,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFB74D',
-    marginBottom: 5,
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 8,
     textAlign: 'center',
-    letterSpacing: 1
+    letterSpacing: 1.5,
+    textShadowColor: 'rgba(63, 81, 181, 0.4)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#B0BEC5',
-    fontStyle: 'italic'
+    fontStyle: 'italic',
+    opacity: 0.8
+  },
+  
+  // Enhanced Section Header Styles
+  sectionHeader: {
+    marginBottom: 25,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  sectionHeaderGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    borderWidth: 0,
+  },
+  sectionHeaderText: {
+    flex: 1,
+    marginLeft: 15,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 15
+    marginBottom: 4
   },
-  quickActionsContainer: {
-    marginBottom: 30
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#B0BEC5',
+    opacity: 0.8
   },
-  quickActionButton: {
-    flex: 1,
+  planBadge: {
+    backgroundColor: 'rgba(63, 81, 181, 0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 15,
+    borderWidth: 0,
+  },
+  planBadgeText: {
+    color: '#3F51B5',
+    fontSize: 16,
+    fontWeight: '700'
+  },
+  mealPlanList: {
+    paddingTop: 10
+  },
+
+  // Enhanced Day Plan Card Styles
+  dayPlanCard: {
+    borderRadius: 25,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+  },
+  dayPlanGradient: {
+    padding: 25,
+    position: 'relative',
+    borderWidth: 0,
+  },
+  floatingOrb: {
+    position: 'absolute',
+    borderRadius: 1000,
+    opacity: 0.6,
+  },
+  
+  // Day Header Styles
+  dayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  dayTitleContainer: {
+    flex: 1,
+  },
+  dayName: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2
+  },
+  dayNumber: {
+    fontSize: 14,
+    color: '#B0BEC5',
+    opacity: 0.8,
+    fontWeight: '500'
+  },
+  dayBadge: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+
+  // Enhanced Nutrition Grid Styles
+  nutritionGrid: {
+    marginBottom: 25,
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 18,
+    padding: 15,
+    borderWidth: 0,
+    elevation: 2,
+    shadowColor: 'rgba(63, 81, 181, 0.3)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  nutritionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  nutritionItemEnhanced: {
+    alignItems: 'center',
+    flex: 1,
+    paddingHorizontal: 4,
+  },
+  iconContainer: {
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  nutritionValueEnhanced: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    textAlign: 'center',
+  },
+  nutritionLabelEnhanced: {
+    fontSize: 11,
+    color: '#B0BEC5',
+    fontWeight: '600',
+    textAlign: 'center',
+    opacity: 0.9
+  },
+
+  // Progress Indicator Styles
+  progressIndicator: {
+    alignItems: 'center',
+  },
+  progressBar: {
+    width: '100%',
+    height: 6,
+    borderRadius: 3,
+    marginBottom: 8,
     overflow: 'hidden',
   },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#B0BEC5',
+    fontWeight: '500',
+    opacity: 0.8
+  },
+
+  // Quick Actions Enhanced
+  quickActionsContainer: {
+    marginBottom: 35
+  },
+  quickActionButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 6,
+    shadowColor: '#3F51B5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
   quickActionGradient: {
-    padding:8,
+    padding: 18,
     alignItems: 'center',
-    borderRadius: 15,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    borderWidth: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 10
+    gap: 12
   },
   quickActionText: {
     color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '500',
-    marginTop: 5
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 3,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2
   },
+
+  // Legacy styles for compatibility
   mealsContainer: {
     marginBottom: 30
   },
@@ -447,8 +808,7 @@ const styles = StyleSheet.create({
     padding: 15,
     alignItems: 'center',
     minHeight: 160,
-    borderWidth: 6,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 0,
     position: 'relative'
   },
   mealIconContainer: {
@@ -487,13 +847,13 @@ const styles = StyleSheet.create({
     opacity: 0.6
   },
   nutritionSummary: {
-    marginTop: 10
+    marginTop: 15
   },
   nutritionContainer: {
     borderRadius: 16,
     padding: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)'
+    borderWidth: 0,
+    backgroundColor: 'rgba(63, 81, 181, 0.05)'
   },
   nutritionTitle: {
     fontSize: 18,

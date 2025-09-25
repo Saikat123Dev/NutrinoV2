@@ -1,30 +1,31 @@
+import PremiumGuard from '@/components/PremiumGuard';
 import { useUser } from '@clerk/clerk-expo';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import * as Speech from 'expo-speech';
 import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
   Dimensions,
   Easing,
+  Keyboard,
   KeyboardAvoidingView,
   Linking,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  RefreshControl
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PremiumGuard from '@/components/PremiumGuard';
 const { width, height } = Dimensions.get('window');
 const PARTICLE_COUNT = 25;
 
@@ -89,6 +90,13 @@ export default function ChatbotScreen() {
   const historyPanelAnim = useRef(new Animated.Value(0)).current;
   const [lastScrollPosition, setLastScrollPosition] = useState(0);
   const [isScrollingUp, setIsScrollingUp] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [preparingSpeech, setPreparingSpeech] = useState<string | null>(null);
+  const speechButtonPulse = useRef(new Animated.Value(1)).current;
+  const inputRef = useRef<TextInput>(null);
 
   // Initialize animations
   useEffect(() => {
@@ -231,6 +239,37 @@ export default function ChatbotScreen() {
     }
   }, [email]);
 
+  // Keyboard event listeners
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      setIsKeyboardVisible(true);
+      // Auto scroll to bottom when keyboard shows
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    });
+
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+      setIsKeyboardVisible(false);
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
+
+  // Cleanup speech when component unmounts
+  useEffect(() => {
+    return () => {
+      if (isSpeaking) {
+        Speech.stop();
+      }
+    };
+  }, []);
+
   const loadConversationHistory = async () => {
     if (!email) return;
     
@@ -348,6 +387,9 @@ export default function ChatbotScreen() {
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+    // Dismiss keyboard
+    Keyboard.dismiss();
+
     const newUserMessage: Message = {
       id: Date.now().toString(),
       text: inputText,
@@ -359,6 +401,11 @@ export default function ChatbotScreen() {
     const currentInput = inputText;
     setInputText('');
     setIsLoading(true);
+
+    // Scroll to bottom after adding message
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
 
     try {
       const response = await fetch('https://nutrinov2.onrender.com/api/ask', {
@@ -464,6 +511,89 @@ export default function ChatbotScreen() {
   const scrollToBottom = () => {
     if (scrollViewRef.current) {
       scrollViewRef.current.scrollToEnd({ animated: true });
+    }
+  };
+
+  const handleTextToSpeech = async (messageId: string, text: string) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      // If already speaking this message, stop it
+      if (speakingMessageId === messageId && isSpeaking) {
+        Speech.stop();
+        setSpeakingMessageId(null);
+        setIsSpeaking(false);
+        speechButtonPulse.setValue(1);
+        return;
+      }
+
+      // If speaking another message, stop it first
+      if (isSpeaking) {
+        Speech.stop();
+        speechButtonPulse.setValue(1);
+      }
+
+      // Show preparing state
+      setPreparingSpeech(messageId);
+
+      // Clean text for better speech (remove special characters, URLs, etc.)
+      const cleanText = text
+        .replace(/https?:\/\/[^\s]+/g, '') // Remove URLs
+        .replace(/[*_~`]/g, '') // Remove markdown formatting
+        .replace(/\n+/g, ' ') // Replace line breaks with spaces
+        .trim();
+
+      setSpeakingMessageId(messageId);
+      setIsSpeaking(true);
+      setPreparingSpeech(null);
+
+      // Start pulsing animation
+      const pulseAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(speechButtonPulse, {
+            toValue: 1.2,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(speechButtonPulse, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulseAnimation.start();
+
+      await Speech.speak(cleanText, {
+        language: 'en-US',
+        pitch: 1.0,
+        rate: 0.9,
+        onDone: () => {
+          setSpeakingMessageId(null);
+          setIsSpeaking(false);
+          speechButtonPulse.setValue(1);
+        },
+        onStopped: () => {
+          setSpeakingMessageId(null);
+          setIsSpeaking(false);
+          speechButtonPulse.setValue(1);
+        },
+        onError: (error) => {
+          console.error('Speech error:', error);
+          setSpeakingMessageId(null);
+          setIsSpeaking(false);
+          setPreparingSpeech(null);
+          speechButtonPulse.setValue(1);
+          Alert.alert('Speech Error', 'Unable to play text-to-speech. Please try again.');
+        }
+      });
+    } catch (error) {
+      console.error('Text-to-speech error:', error);
+      setSpeakingMessageId(null);
+      setIsSpeaking(false);
+      setPreparingSpeech(null);
+      speechButtonPulse.setValue(1);
+      Alert.alert('Error', 'Text-to-speech is not available on this device.');
     }
   };
 
@@ -685,18 +815,23 @@ export default function ChatbotScreen() {
           </Animated.View>
         )}
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardAvoidingView}
-          keyboardVerticalOffset={80}
-        >
+        <View style={styles.chatContainer}>
           <ScrollView
             ref={scrollViewRef}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={[
+              styles.scrollContent,
+              {
+                paddingBottom: isKeyboardVisible ? 
+                  (Platform.OS === 'ios' ? 140 : keyboardHeight + 140) : 
+                  120
+              }
+            ]}
             showsVerticalScrollIndicator={false}
             bounces={true}
             onScroll={handleScroll}
             scrollEventThrottle={16}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
           >
             {messages.map((message, index) => (
               <Animated.View
@@ -761,19 +896,54 @@ export default function ChatbotScreen() {
                     
                     <Text style={styles.messageText}>{message.text}</Text>
                     
-                    {message.sender === 'bot' && renderExplanation(message.explanation)}
-                    {message.sender === 'bot' && renderFeedback(message.feedback)}
-                    {message.sender === 'bot' && renderSafety(message.safety)}
-                    {message.sender === 'bot' && renderSources(message.sources)}
+                    {message.sender === 'bot' && message.explanation && renderExplanation(message.explanation)}
+                    {message.sender === 'bot' && message.feedback && renderFeedback(message.feedback)}
+                    {message.sender === 'bot' && message.safety && renderSafety(message.safety)}
+                    {message.sender === 'bot' && message.sources && renderSources(message.sources)}
                     
                     <View style={styles.messageFooter}>
                       <Text style={styles.messageTime}>
                         {formatTime(message.timestamp)}
                       </Text>
                       {message.sender === 'bot' && (
-                        <TouchableOpacity style={styles.actionButton}>
-                          <MaterialCommunityIcons name="volume-high" size={14} color="#FFFFFF" />
-                        </TouchableOpacity>
+                        <Animated.View
+                          style={[
+                            {
+                              transform: [{
+                                scale: speakingMessageId === message.id ? speechButtonPulse : 1
+                              }]
+                            }
+                          ]}
+                        >
+                          <TouchableOpacity 
+                            style={[
+                              styles.actionButton,
+                              {
+                                backgroundColor: (speakingMessageId === message.id || preparingSpeech === message.id) ? 
+                                  'rgba(20, 217, 187, 0.3)' : 
+                                  'rgba(255, 255, 255, 0.1)',
+                                borderColor: (speakingMessageId === message.id || preparingSpeech === message.id) ? 
+                                  'rgba(20, 217, 187, 0.5)' : 
+                                  'rgba(255, 255, 255, 0.2)'
+                              }
+                            ]}
+                            onPress={() => handleTextToSpeech(message.id, message.text)}
+                            activeOpacity={0.7}
+                          >
+                            <MaterialCommunityIcons 
+                              name={
+                                preparingSpeech === message.id ? "loading" :
+                                speakingMessageId === message.id ? "stop" : 
+                                "volume-high"
+                              } 
+                              size={16} 
+                              color={
+                                (preparingSpeech === message.id || speakingMessageId === message.id) ? 
+                                "#14d9bb" : "#FFFFFF"
+                              } 
+                            />
+                          </TouchableOpacity>
+                        </Animated.View>
                       )}
                     </View>
                   </View>
@@ -796,6 +966,9 @@ export default function ChatbotScreen() {
             style={[
               styles.scrollButton,
               {
+                bottom: isKeyboardVisible ? 
+                  (Platform.OS === 'ios' ? 180 : keyboardHeight + 180) : 
+                  140,
                 opacity: scrollButtonAnim,
                 transform: [
                   {
@@ -820,33 +993,83 @@ export default function ChatbotScreen() {
               />
             </TouchableOpacity>
           </Animated.View>
-
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              value={inputText}
-              onChangeText={setInputText}
-              placeholder="Ask about nutrition, health..."
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              multiline
-            />
-            <TouchableOpacity
-              onPress={handleSendMessage}
-              style={[
-                styles.sendButton,
-                {
-                  backgroundColor: inputText.trim() ? '#11a899' : 'rgba(255,255,255,0.1)'
-                }
-              ]}
-              disabled={!inputText.trim()}
-            >
-              <MaterialCommunityIcons
-                name={inputText.trim() ? "send" : "microphone"}
-                size={20}
-                color={inputText.trim() ? '#FFFFFF' : 'rgba(17, 168, 153, 1)'}
+        </View>
+        
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={[
+            styles.inputAreaContainer,
+            {
+              bottom: Platform.OS === 'android' ? keyboardHeight : 0,
+            }
+          ]}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
+          <Animated.View 
+            style={[
+              styles.inputBlurContainer,
+              {
+                transform: [{
+                  translateY: isKeyboardVisible ? -10 : 0
+                }]
+              }
+            ]}
+          >
+            <View style={styles.inputContainer}>
+              <TextInput
+                ref={inputRef}
+                style={[
+                  styles.input,
+                  {
+                    borderColor: isKeyboardVisible ? 
+                      'rgba(20, 217, 187, 0.5)' : 
+                      'rgba(20, 217, 187, 0.3)',
+                    shadowOpacity: isKeyboardVisible ? 0.2 : 0.1,
+                  }
+                ]}
+                value={inputText}
+                onChangeText={setInputText}
+                placeholder="Ask about nutrition, health, fitness..."
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                multiline
+                maxLength={500}
+                textAlignVertical="top"
+                onFocus={() => {
+                  // Ensure the input is visible when focused
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                  }, 300);
+                }}
+                returnKeyType="send"
+                blurOnSubmit={false}
+                onSubmitEditing={() => {
+                  if (inputText.trim()) {
+                    handleSendMessage();
+                  }
+                }}
+                enablesReturnKeyAutomatically={true}
               />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                onPress={handleSendMessage}
+                style={[
+                  styles.sendButton,
+                  {
+                    backgroundColor: inputText.trim() ? '#11a899' : 'rgba(255,255,255,0.1)',
+                    transform: [{ scale: inputText.trim() ? 1 : 0.9 }],
+                    opacity: inputText.trim() ? 1 : 0.6
+                  }
+                ]}
+                disabled={!inputText.trim()}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name={inputText.trim() ? "send" : "microphone"}
+                  size={22}
+                  color={inputText.trim() ? '#FFFFFF' : 'rgba(17, 168, 153, 1)'}
+                />
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
         </KeyboardAvoidingView>
       </SafeAreaView>
       </PremiumGuard>
@@ -880,9 +1103,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: 'rgba(10, 14, 26, 0.95)',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: 'rgba(20, 217, 187, 0.2)',
+    shadowColor: '#14d9bb',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
   backButton: {
     padding: 8,
@@ -911,16 +1138,36 @@ const styles = StyleSheet.create({
     padding: 8,
     backgroundColor: '#14d9bb',
   },
-  keyboardAvoidingView: {
+  chatContainer: {
     flex: 1,
   },
+  inputAreaContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  inputBlurContainer: {
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 12,
+    backgroundColor: 'rgba(10, 14, 26, 0.95)',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(20, 217, 187, 0.2)',
+    shadowColor: '#14d9bb',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+  },
   scrollContent: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    flexGrow: 1,
   },
   messageContainer: {
-    marginBottom: 8,
-    maxWidth: '85%',
+    marginBottom: 16,
+    maxWidth: '90%',
+    paddingHorizontal: 4,
   },
   userContainer: {
     alignSelf: 'flex-end',
@@ -929,22 +1176,32 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   messageBubble: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 24,
     backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
   botBubble: {
-    backgroundColor: 'rgba(20, 217, 187, 0.2)',
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(20, 217, 187, 0.15)',
+    borderColor: 'rgba(20, 217, 187, 0.4)',
     borderWidth: 2,
+    shadowColor: '#14d9bb',
+    shadowOpacity: 0.2,
+    borderTopLeftRadius: 8,
   },
   userBubble: {
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderColor: 'rgba(0, 230, 118, 0.2)',
+    backgroundColor: 'rgba(17, 168, 153, 0.15)',
+    borderColor: 'rgba(17, 168, 153, 0.4)',
     borderWidth: 2,
+    shadowColor: '#11a899',
+    shadowOpacity: 0.2,
+    borderTopRightRadius: 8,
   },
   followUpBubble: {
     borderColor: 'rgba(255, 183, 77, 0.4)',
@@ -967,8 +1224,9 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 16,
     color: '#FFFFFF',
-    lineHeight: 22,
+    lineHeight: 24,
     fontWeight: '400',
+    letterSpacing: 0.3,
   },
   messageFooter: {
     flexDirection: 'row',
@@ -982,57 +1240,79 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   actionButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    shadowColor: '#14d9bb',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
   inputContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 10,
-    marginBottom: 8,
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 12,
   },
   input: {
     flex: 1,
-    minHeight: 44,
+    minHeight: 50,
     maxHeight: 120,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    paddingTop: 15,
     color: '#FFFFFF',
-    fontSize: 15,
-    marginRight: 12,
+    fontSize: 16,
+    fontWeight: '400',
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(20, 217, 187, 0.3)',
+    shadowColor: '#14d9bb',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#11a899',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   scrollButton: {
     position: 'absolute',
     right: 20,
-    bottom: 100,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    zIndex: 10,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    zIndex: 5,
   },
   scrollButtonInner: {
     width: '100%',
     height: '100%',
-    borderRadius: 22,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(20, 217, 187, 0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(20, 217, 187, 0.4)',
+    shadowColor: '#14d9bb',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
   loadingContainer: {
     alignSelf: 'flex-start',
@@ -1041,26 +1321,39 @@ const styles = StyleSheet.create({
   typingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(20, 217, 187, 0.1)',
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: 'rgba(20, 217, 187, 0.3)',
+    borderTopLeftRadius: 8,
+    shadowColor: '#14d9bb',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
   typingDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#14d9bb',
-    marginHorizontal: 2,
+    marginHorizontal: 3,
+    shadowColor: '#14d9bb',
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
   },
   welcomeCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 24,
-    padding: 10,
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(20, 217, 187, 0.08)',
+    borderRadius: 28,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: 'rgba(20, 217, 187, 0.3)',
+    shadowColor: '#14d9bb',
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
   },
   welcomeHeader: {
     flexDirection: 'row',

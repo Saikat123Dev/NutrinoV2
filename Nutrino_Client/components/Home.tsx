@@ -1,23 +1,22 @@
+import { UpdateService } from '@/components/UpdateService';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { 
-  Animated, 
-  Dimensions, 
-  Easing, 
-  Pressable, 
-  ScrollView, 
-  StyleSheet, 
-  Text, 
-  View,
+import {
+  Animated,
+  Dimensions,
+  Easing,
+  Pressable,
+  ScrollView,
   StatusBar,
-  Platform 
+  StyleSheet,
+  Text,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { UpdateService } from '@/components/UpdateService';
 
 import { usePlan } from '@/context/PlanContext';
 const { width, height } = Dimensions.get('window');
@@ -282,7 +281,7 @@ export default function HomeScreen() {
       })
     ]).start();
     
-    setTimeout(() => router.push(route), 150);
+    setTimeout(() => router.push(route as any), 150);
   };
 
   const formatTime = (date: Date) => {
@@ -356,7 +355,7 @@ export default function HomeScreen() {
           showsVerticalScrollIndicator={false}
           bounces={true}
         >
-          {/* Enhanced Header */}
+          {/* Enhanced Professional Header */}
           <Animated.View 
             style={[
               styles.headerContainer,
@@ -371,165 +370,238 @@ export default function HomeScreen() {
               }
             ]}
           >
-            <View style={styles.timeContainer}>
-              <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
-              <Text style={styles.greetingText}>{greeting}</Text>
-            </View>
-            
-            <View style={styles.titleContainer}>
-              <LinearGradient
-                colors={['#21705d', '#2a7596', '#BA68C8']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.titleGradient}
-              >
-                <Text style={styles.title}>Nutrino AI</Text>
-              </LinearGradient>
-              <Text style={styles.subtitle}>Wellness Through Intelligence</Text>
-              <View style={styles.subtitleUnderline} />
+            {/* Welcome Section */}
+            <View style={styles.welcomeSection}>
+              <View style={styles.timeContainer}>
+                <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
+                <LinearGradient
+                  colors={['#64FFDA', '#4FC3F7', '#29B6F6']}
+                  style={styles.greetingGradient}
+                >
+                  <Text style={styles.greetingText}>{greeting}</Text>
+                </LinearGradient>
+              </View>
+              
+              {/* Brand Identity */}
+              <View style={styles.brandContainer}>
+                <View style={styles.logoContainer}>
+                  <LinearGradient
+                    colors={['#64FFDA', '#4FC3F7']}
+                    style={styles.logoGradient}
+                  >
+                    <MaterialCommunityIcons name="nutrition" size={28} color="#FFFFFF" />
+                  </LinearGradient>
+                  <LinearGradient
+                    colors={['#21705d', '#2a7596', '#BA68C8']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.titleGradient}
+                  >
+                    <Text style={styles.title}>Nutrino AI</Text>
+                  </LinearGradient>
+                </View>
+                <Text style={styles.subtitle}>Wellness Through Intelligence</Text>
+                <View style={styles.taglineContainer}>
+                  <View style={styles.subtitleUnderline} />
+                  <Text style={styles.tagline}>Transform Your Health Journey</Text>
+                </View>
+              </View>
             </View>
 
-            {/* Stats Preview */}
-            <View style={styles.statsPreview}>
-              <View style={styles.statBubble}>
-                <Text style={styles.statValue}>1.0.0</Text>
-                <Text style={styles.statLabel}>Version</Text>
+            {/* Enhanced Stats Section */}
+            <LinearGradient
+              colors={['rgba(100, 255, 218, 0.1)', 'rgba(79, 195, 247, 0.05)']}
+              style={styles.statsContainer}
+            >
+              <View style={styles.statsHeader}>
+                <MaterialCommunityIcons name="chart-timeline-variant" size={20} color="#64FFDA" />
+                <Text style={styles.statsTitle}>Your Progress</Text>
               </View>
-              <View style={styles.statBubble}>
-                <Text style={styles.statValue}>
-  {plan ? plan : 'Please Upgrade'}
-</Text>
-                <Text style={styles.statLabel}>Premium</Text>
+              <View style={styles.statsPreview}>
+                <View style={[styles.statBubble, styles.versionBubble]}>
+                  <LinearGradient
+                    colors={['rgba(100, 255, 218, 0.2)', 'rgba(100, 255, 218, 0.1)']}
+                    style={styles.statBubbleGradient}
+                  >
+                    <MaterialCommunityIcons name="rocket-launch" size={16} color="#64FFDA" />
+                    <Text style={styles.statValue}>v1.0.0</Text>
+                    <Text style={styles.statLabel}>Version</Text>
+                  </LinearGradient>
+                </View>
+                
+                <View style={[styles.statBubble, styles.planBubble]}>
+                  <LinearGradient
+                    colors={plan ? ['rgba(0, 230, 118, 0.2)', 'rgba(0, 230, 118, 0.1)'] : ['rgba(255, 152, 0, 0.2)', 'rgba(255, 152, 0, 0.1)']}
+                    style={styles.statBubbleGradient}
+                  >
+                    <MaterialCommunityIcons 
+                      name={plan ? "crown" : "arrow-up-bold"} 
+                      size={16} 
+                      color={plan ? "#00E676" : "#FF9800"} 
+                    />
+                    <Text style={[styles.statValue, { color: plan ? "#00E676" : "#FF9800" }]}>
+                      {plan ? plan : 'Upgrade'}
+                    </Text>
+                    <Text style={styles.statLabel}>Premium</Text>
+                  </LinearGradient>
+                </View>
+                
+                <View style={[styles.statBubble, styles.levelBubble]}>
+                  <LinearGradient
+                    colors={['rgba(186, 104, 200, 0.2)', 'rgba(186, 104, 200, 0.1)']}
+                    style={styles.statBubbleGradient}
+                  >
+                    <MaterialCommunityIcons name="trending-up" size={16} color="#BA68C8" />
+                    <Text style={[styles.statValue, { color: "#BA68C8" }]}>Pro</Text>
+                    <Text style={styles.statLabel}>Level</Text>
+                  </LinearGradient>
+                </View>
               </View>
-              <View style={styles.statBubble}>
-                <Text style={styles.statValue}>Mid</Text>
-                <Text style={styles.statLabel}>Level</Text>
-              </View>
-            </View>
+            </LinearGradient>
           </Animated.View>
 
-          {/* Features Grid */}
-          <View style={styles.featuresContainer}>
-            {features.map((feature, index) => (
-              <Animated.View
-                key={feature.id}
-                style={[
-                  styles.featureWrapper,
-                  {
-                    width: feature.featured ? width - 40 : (width - 55) / 2,
-                    marginBottom: 10,
-                    opacity: featureAnimations[index].opacity,
-                    transform: [
-                      { scale: featureAnimations[index].scale },
-                      { translateY: featureAnimations[index].translateY }
-                    ]
-                  }
-                ]}
+          {/* Professional Features Section */}
+          <View style={styles.featuresSection}>
+            <View style={styles.sectionHeader}>
+              <LinearGradient
+                colors={['#64FFDA', '#4FC3F7']}
+                style={styles.sectionIconGradient}
               >
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.featureCard,
+                <MaterialCommunityIcons name="view-dashboard-outline" size={20} color="#FFFFFF" />
+              </LinearGradient>
+              <Text style={styles.sectionTitle}>Explore Features</Text>
+            </View>
+            
+            <View style={styles.featuresContainer}>
+              {features.map((feature, index) => (
+                <Animated.View
+                  key={feature.id}
+                  style={[
+                    styles.featureWrapper,
                     {
-                      transform: [{ scale: pressed ? 0.96 : 1 }],
+                      width: feature.featured ? width - 40 : (width - 55) / 2,
+                      marginBottom: 16,
+                      opacity: featureAnimations[index].opacity,
+                      transform: [
+                        { scale: featureAnimations[index].scale },
+                        { translateY: featureAnimations[index].translateY }
+                      ]
                     }
                   ]}
-                  onPress={() => handleFeaturePress(feature.route, feature.primaryColor)}
                 >
-                  <View style={styles.cardContainer}>
-                    {/* Glass morphism background */}
-                    <View style={[styles.glassBackground, { backgroundColor: 'rgba(255, 255, 255, 0.05)' }]} />
-                    
-                    {/* Gradient overlay */}
-                    <LinearGradient
-                      colors={feature.gradientColors}
-                      style={styles.gradientOverlay}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    />
-                    
-                    {/* Border glow */}
-                    <View 
-                      style={[
-                        styles.borderGlow,
-                        { 
-                          shadowColor: feature.primaryColor,
-                          borderColor: `${feature.primaryColor}30`
-                        }
-                      ]} 
-                    />
-                    
-                    {/* Badge */}
-                    {feature.badge && (
-                      <View style={[styles.badge, { backgroundColor: `${feature.primaryColor}20` }]}>
-                        <Text style={[styles.badgeText, { color: feature.primaryColor }]}>
-                          {feature.badge}
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.featureCard,
+                      {
+                        transform: [{ scale: pressed ? 0.96 : 1 }],
+                      }
+                    ]}
+                    onPress={() => handleFeaturePress(feature.route, feature.primaryColor)}
+                  >
+                    <View style={[styles.cardContainer, feature.featured && styles.featuredCardContainer]}>
+                      {/* Enhanced glass morphism background */}
+                      <BlurView intensity={20} style={styles.blurBackground} />
+                      
+                      {/* Enhanced gradient overlay */}
+                      <LinearGradient
+                        colors={[
+                          `${feature.primaryColor}25`,
+                          `${feature.secondaryColor}15`,
+                          'transparent'
+                        ]}
+                        style={styles.gradientOverlay}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                      />
+                      
+                      {/* Professional border */}
+                      <View 
+                        style={[
+                          styles.professionalBorder,
+                          { 
+                            borderColor: `${feature.primaryColor}40`,
+                            shadowColor: feature.primaryColor,
+                          }
+                        ]} 
+                      />
+                      
+                      {/* Enhanced badge */}
+                      {feature.badge && (
+                        <LinearGradient
+                          colors={[`${feature.primaryColor}30`, `${feature.primaryColor}20`]}
+                          style={styles.enhancedBadge}
+                        >
+                          <Text style={[styles.badgeText, { color: feature.primaryColor }]}>
+                            {feature.badge}
+                          </Text>
+                        </LinearGradient>
+                      )}
+                      
+                      {/* Enhanced content */}
+                      <View style={[styles.cardContent, feature.featured && styles.featuredContent]}>
+                        {/* Professional icon container */}
+                        <View style={[
+                          styles.professionalIconContainer,
+                          { 
+                            shadowColor: feature.primaryColor,
+                          }
+                        ]}>
+                          <LinearGradient
+                            colors={[`${feature.primaryColor}30`, `${feature.primaryColor}20`]}
+                            style={styles.iconGradientBg}
+                          >
+                            <MaterialCommunityIcons
+                              name={feature.icon as any}
+                              size={feature.featured ? 32 : 26}
+                              color={feature.primaryColor}
+                            />
+                          </LinearGradient>
+                        </View>
+                        
+                        {/* Enhanced typography */}
+                        <Text style={[
+                          styles.featureTitle,
+                          feature.featured && styles.featuredTitle
+                        ]}>
+                          {feature.title}
                         </Text>
-                      </View>
-                    )}
-                    
-                    {/* Content */}
-                    <View style={[styles.cardContent, feature.featured && styles.featuredContent]}>
-                      {/* Icon with enhanced styling */}
-                      <View style={[
-                        styles.iconContainer,
-                        { 
-                          backgroundColor: `${feature.primaryColor}15`,
-                          shadowColor: feature.primaryColor,
-                          shadowOpacity: 0.3,
-                          shadowRadius: 8,
-                          shadowOffset: { width: 0, height: 4 }
-                        }
-                      ]}>
-                        <MaterialCommunityIcons
-                          name={feature.icon as any}
-                          size={feature.featured ? 36 : 28}
-                          color={feature.primaryColor}
-                        />
+                        
+                        <Text style={[
+                          styles.featureDescription,
+                          feature.featured && styles.featuredDescription
+                        ]}>
+                          {feature.description}
+                        </Text>
+                        
+                        {/* Professional call-to-action */}
+                        <View style={[styles.ctaContainer, { borderTopColor: `${feature.primaryColor}30` }]}>
+                          <Text style={[styles.ctaText, { color: feature.primaryColor }]}>
+                            Explore Now
+                          </Text>
+                          <MaterialCommunityIcons
+                            name="arrow-right-circle"
+                            size={18}
+                            color={feature.primaryColor}
+                          />
+                        </View>
                       </View>
                       
-                      {/* Title */}
-                      <Text style={[
-                        styles.featureTitle,
-                        feature.featured && styles.featuredTitle,
-                        { color: '#FFFFFF' }
-                      ]}>
-                        {feature.title}
-                      </Text>
-                      
-                      {/* Description */}
-                      <Text style={[
-                        styles.featureDescription,
-                        feature.featured && styles.featuredDescription,
-                        { color: '#B0BEC5' }
-                      ]}>
-                        {feature.description}
-                      </Text>
-                      
-                      {/* Action indicator */}
-                      <View style={styles.actionIndicator}>
-                        <MaterialCommunityIcons
-                          name="arrow-right"
-                          size={20}
-                          color={feature.primaryColor}
-                        />
-                      </View>
+                      {/* Professional shine effect */}
+                      <LinearGradient
+                        colors={[
+                          'transparent',
+                          `${feature.primaryColor}08`,
+                          'transparent'
+                        ]}
+                        style={styles.professionalShine}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                      />
                     </View>
-                    
-                    {/* Shine effect */}
-                    <LinearGradient
-                      colors={[
-                        'transparent',
-                        `${feature.primaryColor}10`,
-                        'transparent'
-                      ]}
-                      style={styles.shineEffect}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    />
-                  </View>
-                </Pressable>
-              </Animated.View>
-            ))}
+                  </Pressable>
+                </Animated.View>
+              ))}
+            </View>
           </View>
 
           {/* Bottom Padding */}
@@ -572,31 +644,71 @@ const styles = StyleSheet.create({
   
   headerContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 30,
+    paddingHorizontal: 4,
+  },
+  
+  // Welcome Section Styles
+  welcomeSection: {
+    alignItems: 'center',
+    marginBottom: 24,
   },
   
   timeContainer: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 20,
   },
   
   timeText: {
-    fontSize: 28,
-    fontWeight: '500',
+    fontSize: 32,
+    fontWeight: '300',
     color: '#FFFFFF',
-    letterSpacing: 6,
+    letterSpacing: 8,
+    textShadowColor: 'rgba(100, 255, 218, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  
+  greetingGradient: {
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    marginTop: 8,
   },
   
   greetingText: {
     fontSize: 16,
-    color: '#64FFDA',
-    fontWeight: '500',
-    marginTop: 5,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  
+  // Brand Container Styles
+  brandContainer: {
+    alignItems: 'center',
+  },
+  
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  
+  logoGradient: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    shadowColor: '#64FFDA',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   
   titleContainer: {
     alignItems: 'center',
-    marginBottom: 20,
   },
   
   titleGradient: {
@@ -614,48 +726,142 @@ const styles = StyleSheet.create({
   },
   
   subtitle: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#94A3B8',
     fontStyle: 'italic',
-    marginTop: 10,
+    marginTop: 8,
     letterSpacing: 1,
+    textAlign: 'center',
+  },
+  
+  taglineContainer: {
+    alignItems: 'center',
+    marginTop: 12,
   },
   
   subtitleUnderline: {
-    width: 60,
-    height: 2,
+    width: 80,
+    height: 3,
     backgroundColor: '#64FFDA',
+    marginBottom: 8,
+    borderRadius: 2,
+    shadowColor: '#64FFDA',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+  },
+  
+  tagline: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    fontWeight: '500',
+  },
+  
+  // Enhanced Stats Styles
+  statsContainer: {
+    borderRadius: 20,
+    padding: 20,
     marginTop: 8,
-    borderRadius: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 255, 218, 0.2)',
+    shadowColor: '#64FFDA',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+  },
+  
+  statsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  
+  statsTitle: {
+    fontSize: 16,
+    color: '#64FFDA',
+    fontWeight: '600',
+    marginLeft: 8,
+    letterSpacing: 1,
   },
   
   statsPreview: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    gap: 12,
   },
   
   statBubble: {
+    flex: 1,
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(100, 255, 218, 0.2)',
+    borderColor: 'rgba(100, 255, 218, 0.15)',
+    overflow: 'hidden',
+  },
+  
+  statBubbleGradient: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    width: '100%',
+  },
+  
+  versionBubble: {
+    borderColor: 'rgba(100, 255, 218, 0.3)',
+  },
+  
+  planBubble: {
+    borderColor: 'rgba(0, 230, 118, 0.3)',
+  },
+  
+  levelBubble: {
+    borderColor: 'rgba(186, 104, 200, 0.3)',
   },
   
   statValue: {
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#64FFDA',
+    marginTop: 4,
+    marginBottom: 2,
   },
   
   statLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#94A3B8',
     fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  
+  // Features Section Styles
+  featuresSection: {
+    marginTop: 8,
+  },
+  
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 4,
+  },
+  
+  sectionIconGradient: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 1,
   },
   
   featuresContainer: {
@@ -675,21 +881,30 @@ const styles = StyleSheet.create({
   },
   
   cardContainer: {
-    borderRadius: 20,
+    borderRadius: 24,
     position: 'relative',
     overflow: 'hidden',
-    minHeight: 170,
+    minHeight: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
   
-  glassBackground: {
+  featuredCardContainer: {
+    minHeight: 200,
+    borderRadius: 28,
+  },
+  
+  // Professional Background Styles
+  blurBackground: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 50)',
-    backdropFilter: 'blur(10px)',
+    borderRadius: 24,
   },
   
   gradientOverlay: {
@@ -698,55 +913,76 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 20,
+    borderRadius: 24,
   },
   
-  borderGlow: {
+  professionalBorder: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 20,
-    borderWidth: 3,
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    borderRadius: 24,
+    borderWidth: 1.5,
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
   },
   
-  badge: {
+  // Enhanced Badge Styles
+  enhancedBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
+    top: 16,
+    right: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
     zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   
   badgeText: {
     fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   
+  // Professional Card Content
   cardContent: {
-    padding: 4,
+    padding: 20,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     flex: 1,
     position: 'relative',
     zIndex: 5,
   },
   
-  
-  iconContainer: {
-    borderRadius: 16,
-    padding: 7,
-    elevation: 2,
-    marginBottom: 12,
+  featuredContent: {
+    padding: 24,
   },
   
+  
+  // Professional Icon Styles
+  professionalIconContainer: {
+    marginBottom: 16,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  
+  iconGradientBg: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  
+  // Typography Styles
   featureTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -757,42 +993,52 @@ const styles = StyleSheet.create({
   },
   
   featuredTitle: {
-    fontSize: 20,
-    marginBottom: 12,
+    fontSize: 18,
+    marginBottom: 10,
     fontWeight: '800',
   },
   
   featureDescription: {
-    fontSize: 13,
-    color: '#B0BEC5',
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 16,
     fontWeight: '500',
-    paddingHorizontal: 4,
+    marginBottom: 16,
   },
   
   featuredDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-    paddingHorizontal: 0,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 18,
   },
   
-  actionIndicator: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 10,
-    padding: 4,
+  // Professional Call-to-Action
+  ctaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    width: '100%',
   },
   
-  shineEffect: {
+  ctaText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginRight: 6,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  
+  // Professional Effects
+  professionalShine: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 20,
-    opacity: 0.9,
+    borderRadius: 24,
+    opacity: 0.6,
   },
 });

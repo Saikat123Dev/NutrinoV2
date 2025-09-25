@@ -9,7 +9,6 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Dimensions, Easing, Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import PremiumGuard from '@/components/PremiumGuard';
 const { width, height } = Dimensions.get('window');
 const PARTICLE_COUNT = 25;
 
@@ -127,7 +126,7 @@ export default function HealthReportScreen() {
   };
 
   const { user } = useUser();
-  const clerkId = user?.id;
+  const email = user?.emailAddresses?.[0]?.emailAddress || '';
   const isFocused = useIsFocused();
 
   const [healthReport, setHealthReport] = useState<Record<string, any> | null>(null);
@@ -141,14 +140,14 @@ export default function HealthReportScreen() {
   };
 
   const fetchHealthReport = async () => {
-    if (!clerkId) {
+    if (!email) {
       setLoading(false);
       setApiError("User not authenticated");
       return;
     }
     
     try {
-      const response = await axiosInstance.post('/v1/feedback/health', { clerkId });
+      const response = await axiosInstance.post('/v1/feedback/health', { email });
       
       if (response.data?.data?.structuredReport) {
         setHealthReport(response.data.data.structuredReport);
@@ -190,28 +189,30 @@ export default function HealthReportScreen() {
     if (isFocused) {
       fetchHealthReport();
     }
-  }, [clerkId, isFocused]);
+  }, [email, isFocused]);
 
   const ErrorDisplay = () => (
     <View style={styles.errorContainer}>
       <LinearGradient
-        colors={['#2D1B1B', '#3D2626']}
+        colors={['rgba(45, 27, 27, 0.95)', 'rgba(61, 38, 38, 0.85)']}
         style={styles.errorCard}
       >
-        <MaterialCommunityIcons name="alert-circle-outline" size={48} color="#FF6B6B" />
+        <View style={styles.errorIconContainer}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={64} color="#FF6B6B" />
+        </View>
         <Text style={styles.errorTitle}>Oops! Something went wrong</Text>
         <Text style={styles.errorMessage}>{apiError}</Text>
         
         <Pressable 
           style={styles.retryButton} 
           onPress={retryFetch}
-          android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
+          android_ripple={{ color: 'rgba(255,255,255,0.15)' }}
         >
           <LinearGradient
-            colors={['#4FC3F7', '#29B6F6']}
+            colors={['#FF6B6B', '#FF5252']}
             style={styles.retryButtonGradient}
           >
-            <MaterialCommunityIcons name="refresh" size={20} color="#FFFFFF" />
+            <MaterialCommunityIcons name="refresh" size={22} color="#FFFFFF" />
             <Text style={styles.retryButtonText}>Try Again</Text>
           </LinearGradient>
         </Pressable>
@@ -222,10 +223,17 @@ export default function HealthReportScreen() {
   const EmptyState = () => (
     <View style={styles.emptyContainer}>
       <LinearGradient
-        colors={['#1A1A2E', '#2D2D44']}
+        colors={['rgba(26, 26, 46, 0.95)', 'rgba(45, 45, 68, 0.85)']}
         style={styles.emptyCard}
       >
-        <MaterialCommunityIcons name="file-document-outline" size={48} color="#4FC3F7" />
+        <View style={styles.emptyIconContainer}>
+          <LinearGradient
+            colors={['#4FC3F7', '#29B6F6']}
+            style={styles.iconGradientBackground}
+          >
+            <MaterialCommunityIcons name="file-document-outline" size={48} color="#FFFFFF" />
+          </LinearGradient>
+        </View>
         <Text style={styles.emptyTitle}>No Report Available</Text>
         <Text style={styles.emptyMessage}>
           Complete your health assessments to generate your personalized health report.
@@ -234,13 +242,13 @@ export default function HealthReportScreen() {
         <Pressable 
           style={styles.retryButton} 
           onPress={retryFetch}
-          android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
+          android_ripple={{ color: 'rgba(255,255,255,0.15)' }}
         >
           <LinearGradient
             colors={['#4FC3F7', '#29B6F6']}
             style={styles.retryButtonGradient}
           >
-            <MaterialCommunityIcons name="refresh" size={20} color="#FFFFFF" />
+            <MaterialCommunityIcons name="refresh" size={22} color="#FFFFFF" />
             <Text style={styles.retryButtonText}>Refresh</Text>
           </LinearGradient>
         </Pressable>
@@ -250,10 +258,21 @@ export default function HealthReportScreen() {
 
   const LoadingIndicator = () => (
     <View style={styles.loadingOverlay}>
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4FC3F7" />
+      <LinearGradient
+        colors={['rgba(10, 14, 26, 0.95)', 'rgba(26, 27, 58, 0.9)']}
+        style={styles.loadingContainer}
+      >
+        <View style={styles.loadingIconContainer}>
+          <ActivityIndicator size="large" color="#4FC3F7" />
+          <View style={styles.pulsingDots}>
+            <View style={[styles.dot, { animationDelay: '0s' }]} />
+            <View style={[styles.dot, { animationDelay: '0.2s' }]} />
+            <View style={[styles.dot, { animationDelay: '0.4s' }]} />
+          </View>
+        </View>
         <Text style={styles.loadingText}>Loading your health report...</Text>
-      </View>
+        <Text style={styles.loadingSubtext}>Analyzing your wellness data</Text>
+      </LinearGradient>
     </View>
   );
 
@@ -294,10 +313,17 @@ export default function HealthReportScreen() {
         {healthReport?.insightSummary && (
           <View style={styles.insightsContainer}>
             <LinearGradient
-              colors={['#0D2F10', '#173E19']}
+              colors={['rgba(13, 47, 16, 0.95)', 'rgba(23, 62, 25, 0.85)']}
               style={styles.insightsCard}
             >
-              <MaterialCommunityIcons name="lightbulb-outline" size={24} color="#00E676" />
+              <View style={styles.insightsIconContainer}>
+                <LinearGradient
+                  colors={['#00E676', '#4CAF50']}
+                  style={styles.insightsIconGradient}
+                >
+                  <MaterialCommunityIcons name="lightbulb-outline" size={28} color="#FFFFFF" />
+                </LinearGradient>
+              </View>
               <Text style={styles.insightsTitle}>Health Insights</Text>
               <Text style={styles.insightsText}>{healthReport.insightSummary}</Text>
             </LinearGradient>
@@ -372,10 +398,24 @@ export default function HealthReportScreen() {
           {/* Header */}
           <View style={styles.headerContainer}>
             <Pressable style={styles.backButton} onPress={handleBackPress}>
-              <MaterialCommunityIcons name="arrow-left" size={24} color="#4FC3F7" />
+              <LinearGradient
+                colors={['rgba(79, 195, 247, 0.3)', 'rgba(79, 195, 247, 0.1)']}
+                style={styles.backButtonGradient}
+              >
+                <MaterialCommunityIcons name="arrow-left" size={24} color="#4FC3F7" />
+              </LinearGradient>
             </Pressable>
-            <Text style={styles.title}>Health Report</Text>
-            <Text style={styles.subtitle}>Track your wellness journey</Text>
+            
+            <View style={styles.titleContainer}>
+              <LinearGradient
+                colors={['#4FC3F7', '#29B6F6', '#1E88E5']}
+                style={styles.titleGradient}
+              >
+                <MaterialCommunityIcons name="chart-line" size={32} color="#FFFFFF" />
+                <Text style={styles.title}>Health Report</Text>
+              </LinearGradient>
+              <Text style={styles.subtitle}>Track your wellness journey</Text>
+            </View>
           </View>
 
           {/* Content based on state */}
@@ -406,18 +446,27 @@ type SectionProps = {
 const Section: React.FC<SectionProps> = ({ title, items, icon }) => {
   if (!items || items.length === 0) return null;
   return (
-    <View style={styles.sectionStyle}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-        {icon}
-        <Text style={{ color: '#4FC3F7', fontWeight: 'bold', fontSize: 16, marginLeft: icon ? 8 : 0 }}>{title}</Text>
-      </View>
-      {items.map((item, idx) => (
-        <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
-          <MaterialCommunityIcons name="check-circle-outline" size={18} color="#00E676" style={{ marginTop: 2, marginRight: 6 }} />
-          <Text style={{ color: '#FFFFFF', fontSize: 14, flex: 1 }}>{item}</Text>
+    <LinearGradient
+      colors={['rgba(79, 195, 247, 0.1)', 'rgba(79, 195, 247, 0.05)']}
+      style={styles.sectionStyle}
+    >
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionIconContainer}>
+          {icon}
         </View>
-      ))}
-    </View>
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
+      <View style={styles.sectionContent}>
+        {items.map((item, idx) => (
+          <View key={idx} style={styles.sectionItem}>
+            <View style={styles.checkIconContainer}>
+              <MaterialCommunityIcons name="check-circle-outline" size={18} color="#00E676" />
+            </View>
+            <Text style={styles.sectionItemText}>{item}</Text>
+          </View>
+        ))}
+      </View>
+    </LinearGradient>
   );
 };
 
@@ -429,25 +478,34 @@ type ObjectSectionProps = {
 const ObjectSection: React.FC<ObjectSectionProps> = ({ title, obj, icon }) => {
   if (!obj) return null;
   return (
-    <View style={styles.sectionStyle}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-        {icon}
-        <Text style={{ color: '#4FC3F7', fontWeight: 'bold', fontSize: 16, marginLeft: icon ? 8 : 0 }}>{title}</Text>
+    <LinearGradient
+      colors={['rgba(79, 195, 247, 0.1)', 'rgba(79, 195, 247, 0.05)']}
+      style={styles.sectionStyle}
+    >
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionIconContainer}>
+          {icon}
+        </View>
+        <Text style={styles.sectionTitle}>{title}</Text>
       </View>
-      {Object.entries(obj).map(([key, value]) =>
-        Array.isArray(value) && value.length > 0 ? (
-          <View key={key} style={{ marginBottom: 6 }}>
-            <Text style={{ color: '#00E676', fontWeight: '600', fontSize: 14, marginBottom: 2 }}>{key.replace(/([A-Z])/g, ' $1')}</Text>
-            {value.map((v: string, idx: number) => (
-              <View key={idx} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 2 }}>
-                <MaterialCommunityIcons name="circle-small" size={18} color="#FFFFFF" />
-                <Text style={{ color: '#FFFFFF', fontSize: 14, flex: 1 }}>{v}</Text>
-              </View>
-            ))}
-          </View>
-        ) : null
-      )}
-    </View>
+      <View style={styles.sectionContent}>
+        {Object.entries(obj).map(([key, value]) =>
+          Array.isArray(value) && value.length > 0 ? (
+            <View key={key} style={styles.objectSectionCategory}>
+              <Text style={styles.categoryTitle}>{key.replace(/([A-Z])/g, ' $1')}</Text>
+              {value.map((v: string, idx: number) => (
+                <View key={idx} style={styles.sectionItem}>
+                  <View style={styles.bulletPoint}>
+                    <MaterialCommunityIcons name="circle-small" size={18} color="#4FC3F7" />
+                  </View>
+                  <Text style={styles.sectionItemText}>{v}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null
+        )}
+      </View>
+    </LinearGradient>
   );
 };
 
@@ -457,28 +515,38 @@ type HealthRisksProps = {
 const HealthRisks: React.FC<HealthRisksProps> = ({ risks }) => {
   if (!risks || risks.length === 0) return null;
   return (
-    <View style={styles.sectionStyle}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-        <MaterialCommunityIcons name="alert-circle-outline" size={20} color="#FFB300" />
-        <Text style={{ color: '#FFB300', fontWeight: 'bold', fontSize: 16, marginLeft: 8 }}>Health Risks</Text>
-      </View>
-      {risks.map((risk, idx) => (
-        <View key={idx} style={{ marginBottom: 8 }}>
-          <Text style={{ color: '#FFB300', fontWeight: '600', fontSize: 14 }}>{risk.condition}</Text>
-          <Text style={{ color: '#FFFFFF', fontSize: 14, marginBottom: 2 }}>{risk.description}</Text>
-          {risk.preventionSteps && Array.isArray(risk.preventionSteps) && risk.preventionSteps.length > 0 && (
-            <View style={{ marginLeft: 8 }}>
-              {risk.preventionSteps.map((step: string, i: number) => (
-                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                  <MaterialCommunityIcons name="circle-small" size={18} color="#FFFFFF" />
-                  <Text style={{ color: '#FFFFFF', fontSize: 13, flex: 1 }}>{step}</Text>
-                </View>
-              ))}
-            </View>
-          )}
+    <LinearGradient
+      colors={['rgba(255, 179, 0, 0.1)', 'rgba(255, 179, 0, 0.05)']}
+      style={[styles.sectionStyle, styles.riskSection]}
+    >
+      <View style={styles.sectionHeader}>
+        <View style={[styles.sectionIconContainer, styles.riskIconContainer]}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={20} color="#FFB300" />
         </View>
-      ))}
-    </View>
+        <Text style={[styles.sectionTitle, styles.riskTitle]}>Health Risks</Text>
+      </View>
+      <View style={styles.sectionContent}>
+        {risks.map((risk, idx) => (
+          <View key={idx} style={styles.riskItem}>
+            <Text style={styles.riskCondition}>{risk.condition}</Text>
+            <Text style={styles.riskDescription}>{risk.description}</Text>
+            {risk.preventionSteps && Array.isArray(risk.preventionSteps) && risk.preventionSteps.length > 0 && (
+              <View style={styles.preventionSteps}>
+                <Text style={styles.preventionTitle}>Prevention Steps:</Text>
+                {risk.preventionSteps.map((step: string, i: number) => (
+                  <View key={i} style={styles.sectionItem}>
+                    <View style={styles.bulletPoint}>
+                      <MaterialCommunityIcons name="shield-check-outline" size={16} color="#00E676" />
+                    </View>
+                    <Text style={styles.preventionStepText}>{step}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        ))}
+      </View>
+    </LinearGradient>
   );
 };
 
@@ -579,59 +647,190 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     alignItems: 'center',
-    marginBottom: 30,
-    paddingTop: 10
+    marginBottom: 40,
+    paddingTop: 10,
+    position: 'relative',
   },
   backButton: {
     position: 'absolute',
     left: 0,
     top: 10,
-    padding: 10,
-    borderRadius: 20,
-    backgroundColor: 'rgba(79, 195, 247, 0.2)'
+    borderRadius: 25,
+    overflow: 'hidden',
+  },
+  backButtonGradient: {
+    padding: 12,
+    borderRadius: 25,
+  },
+  titleContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  titleGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginBottom: 8,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 5,
-    textAlign: 'center',
-    letterSpacing: 1
+    marginLeft: 10,
+    letterSpacing: 1,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontStyle: 'italic'
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontStyle: 'italic',
   },
   sectionStyle: {
-    marginBottom: 18,
-    backgroundColor: 'rgba(178, 178, 178, 0.26)',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 10
-  },
-  insightsContainer: {
-    marginBottom: 20
-  },
-  insightsCard: {
+    marginBottom: 20,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(100, 255, 218, 0.2)',
-    alignItems: 'center'
+    borderColor: 'rgba(79, 195, 247, 0.2)',
+    shadowColor: '#4FC3F7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(79, 195, 247, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  sectionTitle: {
+    color: '#4FC3F7',
+    fontWeight: 'bold',
+    fontSize: 18,
+    flex: 1,
+  },
+  sectionContent: {
+    marginLeft: 8,
+  },
+  sectionItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    paddingVertical: 4,
+  },
+  checkIconContainer: {
+    marginTop: 2,
+    marginRight: 12,
+  },
+  sectionItemText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    lineHeight: 22,
+    flex: 1,
+  },
+  objectSectionCategory: {
+    marginBottom: 16,
+  },
+  categoryTitle: {
+    color: '#00E676',
+    fontWeight: '600',
+    fontSize: 16,
+    marginBottom: 8,
+    textTransform: 'capitalize',
+  },
+  bulletPoint: {
+    marginTop: 2,
+    marginRight: 8,
+  },
+  // Health Risk specific styles
+  riskSection: {
+    borderColor: 'rgba(255, 179, 0, 0.3)',
+  },
+  riskIconContainer: {
+    backgroundColor: 'rgba(255, 179, 0, 0.2)',
+  },
+  riskTitle: {
+    color: '#FFB300',
+  },
+  riskItem: {
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: 'rgba(255, 179, 0, 0.05)',
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFB300',
+  },
+  riskCondition: {
+    color: '#FFB300',
+    fontWeight: '700',
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  riskDescription: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  preventionSteps: {
+    marginTop: 8,
+  },
+  preventionTitle: {
+    color: '#00E676',
+    fontWeight: '600',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  preventionStepText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 20,
+    flex: 1,
+  },
+  insightsContainer: {
+    marginBottom: 30,
+  },
+  insightsCard: {
+    borderRadius: 20,
+    padding: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 230, 118, 0.3)',
+    alignItems: 'center',
+    shadowColor: '#00E676',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+  },
+  insightsIconContainer: {
+    marginBottom: 16,
+  },
+  insightsIconGradient: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   insightsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
     color: '#00E676',
-    marginTop: 10,
-    marginBottom: 10
+    marginBottom: 16,
+    textAlign: 'center',
   },
   insightsText: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 20
+    lineHeight: 24,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -641,17 +840,40 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   loadingContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 20,
+    padding: 32,
     alignItems: 'center',
-    minWidth: 200,
+    minWidth: 280,
+    borderWidth: 1,
+    borderColor: 'rgba(79, 195, 247, 0.3)',
+  },
+  loadingIconContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  pulsingDots: {
+    flexDirection: 'row',
+    marginTop: 12,
+    justifyContent: 'center',
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4FC3F7',
+    marginHorizontal: 4,
+    opacity: 0.6,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
+    fontSize: 18,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
   },
   errorContainer: {
     flex: 1,
@@ -660,28 +882,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   errorCard: {
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 20,
+    padding: 32,
     alignItems: 'center',
     width: '100%',
-    maxWidth: 350,
+    maxWidth: 380,
     borderWidth: 1,
-    borderColor: 'rgba(255, 107, 107, 0.3)',
+    borderColor: 'rgba(255, 107, 107, 0.4)',
+    shadowColor: '#FF6B6B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+  },
+  errorIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   errorTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#FF6B6B',
-    marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: 'center',
   },
   errorMessage: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
+    lineHeight: 22,
+    marginBottom: 24,
   },
   emptyContainer: {
     flex: 1,
@@ -690,45 +924,62 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   emptyCard: {
-    borderRadius: 16,
-    padding: 24,
+    borderRadius: 20,
+    padding: 32,
     alignItems: 'center',
     width: '100%',
-    maxWidth: 350,
+    maxWidth: 380,
     borderWidth: 1,
-    borderColor: 'rgba(79, 195, 247, 0.3)',
+    borderColor: 'rgba(79, 195, 247, 0.4)',
+    shadowColor: '#4FC3F7',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+  },
+  emptyIconContainer: {
+    marginBottom: 20,
+  },
+  iconGradientBackground: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#4FC3F7',
-    marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: 'center',
   },
   emptyMessage: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
+    lineHeight: 22,
+    marginBottom: 24,
   },
   retryButton: {
-    borderRadius: 25,
+    borderRadius: 30,
     overflow: 'hidden',
-    marginTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
   },
   retryButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 32,
   },
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
+    fontWeight: '700',
+    marginLeft: 10,
   },
 });

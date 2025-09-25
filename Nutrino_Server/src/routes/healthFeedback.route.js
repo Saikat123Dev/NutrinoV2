@@ -9,12 +9,12 @@ const router = Router();
 // Generate health report feedback using Gemini AI and save to database
 router.post('/health', async (req, res) => {
   try {
-    const { clerkId } = req.body;
+    const { email } = req.body;
 
     // Get user details with health information
     const userDetails = await prisma.user.findUnique({
       where: {
-        clerkId: clerkId
+        email: email
       },
       include: {
         healthProfile: true,

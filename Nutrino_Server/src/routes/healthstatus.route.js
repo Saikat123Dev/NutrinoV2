@@ -6,7 +6,7 @@ const router = express.Router();
 router.post('/healthprofile', async (req, res) => {
     try {
         const {
-            clerkId,
+            email,
             age,
             gender,
             height,
@@ -14,6 +14,10 @@ router.post('/healthprofile', async (req, res) => {
             activityLevel,
             medicalConditions,
             allergies,
+            dietaryPreferences,
+            foodAllergies,
+            mealFrequency,
+            waterIntake,
             pregnancyStatus,
             breastfeeding,
             recentSurgery,
@@ -21,12 +25,17 @@ router.post('/healthprofile', async (req, res) => {
             digestiveIssues
         } = req.body;
 
-        if (!clerkId) {
-            return res.status(400).json({ error: 'clerkId is required' });
+        if (!email) {
+            return res.status(400).json({ error: 'email is required' });
         }
+
+        console.log('Looking for user with email:', email, 'Type:', typeof email);
+
         const user = await prisma.user.findUnique({
-            where: { clerkId: clerkId }
+            where: { email: String(email) }
         });
+
+        console.log('Found user:', user);
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -46,13 +55,17 @@ router.post('/healthprofile', async (req, res) => {
             healthProfile = await prisma.healthProfile.update({
                 where: { userId: parseInt(userId) },
                 data: {
-                    age: age !== undefined ? Number(age) : undefined,
-                    gender: gender !== undefined ? gender : undefined,
-                    height: height !== undefined ? parseFloat(height) : undefined,
-                    weight: weight !== undefined ? parseFloat(weight) : undefined,
-                    activityLevel: activityLevel !== undefined ? activityLevel : undefined,
+                    age: age !== undefined && age !== null && age !== '' ? parseInt(age) : undefined,
+                    gender: gender !== undefined && gender !== '' ? gender : undefined,
+                    height: height !== undefined && height !== null && height !== '' ? parseFloat(height) : undefined,
+                    weight: weight !== undefined && weight !== null && weight !== '' ? parseFloat(weight) : undefined,
+                    activityLevel: activityLevel !== undefined && activityLevel !== '' ? activityLevel : undefined,
                     medicalConditions: medicalConditions !== undefined ? medicalConditions : undefined,
                     allergies: allergies !== undefined ? allergies : undefined,
+                    dietaryPreferences: dietaryPreferences !== undefined ? dietaryPreferences : undefined,
+                    foodAllergies: foodAllergies !== undefined ? foodAllergies : undefined,
+                    mealFrequency: mealFrequency !== undefined && mealFrequency !== '' ? mealFrequency : undefined,
+                    waterIntake: waterIntake !== undefined && waterIntake !== null && waterIntake !== '' ? parseFloat(waterIntake) : undefined,
                     pregnancyStatus: pregnancyStatus !== undefined ? pregnancyStatus : undefined,
                     breastfeeding: breastfeeding !== undefined ? breastfeeding : undefined,
                     recentSurgery: recentSurgery !== undefined ? recentSurgery : undefined,
@@ -65,17 +78,21 @@ router.post('/healthprofile', async (req, res) => {
             healthProfile = await prisma.healthProfile.create({
                 data: {
                     userId: parseInt(userId),
-                    age: age ? parseInt(age) : null,
-                    gender,
-                    height: height ? parseFloat(height) : null,
-                    weight: weight ? parseFloat(weight) : null,
-                    activityLevel,
+                    age: age && age !== '' ? parseInt(age) : null,
+                    gender: gender || null,
+                    height: height && height !== '' ? parseFloat(height) : null,
+                    weight: weight && weight !== '' ? parseFloat(weight) : null,
+                    activityLevel: activityLevel || null,
                     medicalConditions: medicalConditions || [],
                     allergies: allergies || [],
-                    pregnancyStatus,
-                    breastfeeding,
-                    recentSurgery,
-                    chronicPain,
+                    dietaryPreferences: dietaryPreferences || [],
+                    foodAllergies: foodAllergies || [],
+                    mealFrequency: mealFrequency || null,
+                    waterIntake: waterIntake && waterIntake !== '' ? parseFloat(waterIntake) : null,
+                    pregnancyStatus: pregnancyStatus || null,
+                    breastfeeding: breastfeeding || null,
+                    recentSurgery: recentSurgery || null,
+                    chronicPain: chronicPain || null,
                     digestiveIssues: digestiveIssues || []
                 }
             });
@@ -96,13 +113,17 @@ router.post('/healthprofile', async (req, res) => {
     }
 });
 
-router.get('/healthprofile/:clerkId', async (req, res) => {
+router.get('/healthprofile/:email', async (req, res) => {
     try {
-        const clerkId = req.params.clerkId;
+        const email = req.params.email;
+
+        console.log('GET HealthProfile: Looking for user with email:', email, 'Type:', typeof email);
 
         const user = await prisma.user.findUnique({
-            where: { clerkId: clerkId }
+            where: { email: String(email) }
         });
+
+        console.log('GET HealthProfile: Found user:', user);
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -111,19 +132,12 @@ router.get('/healthprofile/:clerkId', async (req, res) => {
         }
         const userId = user ? user.id : null;
         const healthProfile = await prisma.healthProfile.findUnique({
-            where: { userId },
+            where: { userId: user.id },
         });
-
-        if (!healthProfile) {
-            return res.status(404).json({
-                success: false,
-                message: 'Health profile not found'
-            });
-        }
 
         return res.status(200).json({
             success: true,
-            data: healthProfile
+            data: healthProfile || null
         });
     } catch (error) {
         console.error('Error fetching health profile:', error);
@@ -135,11 +149,11 @@ router.get('/healthprofile/:clerkId', async (req, res) => {
     }
 });
 
-router.delete('/healthprofile/:clerkId', async (req, res) => {
+router.delete('/healthprofile/:email', async (req, res) => {
     try {
-        const clerkId = parseInt(req.params.clerkId);
+        const email = req.params.email;
         const user = await prisma.user.findUnique({
-            where: { clerkId: clerkId }
+            where: { email: String(email) }
         });
         if (!user) {
             return res.status(404).json({
@@ -147,9 +161,8 @@ router.delete('/healthprofile/:clerkId', async (req, res) => {
                 message: 'User not found'
             });
         }
-        const userId = user ? user.id : null;
         const existingProfile = await prisma.healthProfile.findUnique({
-            where: { userId }
+            where: { userId: user.id }
         });
 
         if (!existingProfile) {
@@ -160,7 +173,7 @@ router.delete('/healthprofile/:clerkId', async (req, res) => {
         }
 
         await prisma.healthProfile.delete({
-            where: { userId }
+            where: { userId: user.id }
         });
 
         return res.status(200).json({
@@ -180,74 +193,97 @@ router.delete('/healthprofile/:clerkId', async (req, res) => {
 router.post('/badhabit', async (req, res) => {
     try {
         const {
-            clerkId,
+            email,
             habitType,
             specificHabit,
-            frequency,
+            habitFrequency,
+            frequency, // fallback for backwards compatibility
             quantityPerOccasion,
             unit,
-            duration,
+            habitDuration,
+            duration, // fallback for backwards compatibility
             lastOccurrence,
             triggerFactors,
             attemptedQuitting,
             quittingMethods,
             impactSelfRating,
-            notes,
-            substanceUseId
+            notes
         } = req.body;
 
         // Validate required fields
-        if (!clerkId) {
-            return res.status(400).json({ error: 'clerkId is required' });
+        if (!email) {
+            return res.status(400).json({ error: 'email is required' });
         }
 
-        if (!habitType || !specificHabit || !frequency) {
-            return res.status(400).json({ error: 'habitType, specificHabit, and frequency are required' });
-        }
+        // Use habitFrequency if available, otherwise fall back to frequency
+        const finalFrequency = habitFrequency || frequency;
+        const finalDuration = habitDuration || duration;
 
-        // Get the user by clerkId
+        // Get the user by email
+        console.log('BadHabit: Looking for user with email:', email, 'Type:', typeof email);
+
         const user = await prisma.user.findUnique({
-            where: { clerkId }
+            where: { email: String(email) }
         });
 
+        console.log('BadHabit: Found user:', user);
+
         if (!user) {
-            return res.status(404).json({ error: 'User not found with given clerkId' });
+            return res.status(404).json({ error: 'User not found with given email' });
         }
 
         const formattedLastOccurrence = lastOccurrence ? new Date(lastOccurrence) : undefined;
 
-        const createData = {
-            user: {
-                connect: { id: user.id }
-            },
-            habitType,
-            specificHabit,
-            frequency,
-            quantityPerOccasion: quantityPerOccasion ? parseFloat(quantityPerOccasion) : null,
-            unit,
-            duration: duration ? parseInt(duration) : null,
-            lastOccurrence: formattedLastOccurrence,
-            triggerFactors: triggerFactors || [],
-            attemptedQuitting: attemptedQuitting !== undefined ? attemptedQuitting : false,
-            quittingMethods: quittingMethods || [],
-            impactSelfRating: impactSelfRating ? parseInt(impactSelfRating) : null,
-            notes
-        };
-
-        // Add relation to substanceUse if present
-        if (substanceUseId) {
-            createData.substanceUse = {
-                connect: { id: parseInt(substanceUseId) }
-            };
-        }
-
-        const habit = await prisma.badHabit.create({
-            data: createData
+        // Check if bad habit already exists for this user
+        const existingHabit = await prisma.badHabit.findFirst({
+            where: { userId: user.id }
         });
+
+        let habit;
+
+        if (existingHabit) {
+            // Update existing habit
+            habit = await prisma.badHabit.update({
+                where: { id: existingHabit.id },
+                data: {
+                    habitType: habitType || undefined,
+                    specificHabit: specificHabit || undefined,
+                    frequency: finalFrequency || undefined,
+                    quantityPerOccasion: quantityPerOccasion && quantityPerOccasion !== '' ? parseFloat(quantityPerOccasion) : undefined,
+                    unit: unit || undefined,
+                    duration: finalDuration && finalDuration !== '' ? parseInt(finalDuration) : undefined,
+                    lastOccurrence: formattedLastOccurrence,
+                    triggerFactors: triggerFactors !== undefined ? triggerFactors : undefined,
+                    attemptedQuitting: attemptedQuitting !== undefined ? attemptedQuitting : undefined,
+                    quittingMethods: quittingMethods !== undefined ? quittingMethods : undefined,
+                    impactSelfRating: impactSelfRating && impactSelfRating !== '' ? parseInt(impactSelfRating) : undefined,
+                    notes: notes || undefined
+                }
+            });
+        } else {
+            // Create new habit
+            habit = await prisma.badHabit.create({
+                data: {
+                    userId: user.id,
+                    habitType: habitType || '',
+                    specificHabit: specificHabit || '',
+                    frequency: finalFrequency || 'RARELY',
+                    quantityPerOccasion: quantityPerOccasion && quantityPerOccasion !== '' ? parseFloat(quantityPerOccasion) : null,
+                    unit: unit || null,
+                    duration: finalDuration && finalDuration !== '' ? parseInt(finalDuration) : null,
+                    lastOccurrence: formattedLastOccurrence,
+                    triggerFactors: triggerFactors || [],
+                    attemptedQuitting: attemptedQuitting !== undefined ? attemptedQuitting : false,
+                    quittingMethods: quittingMethods || [],
+                    impactSelfRating: impactSelfRating && impactSelfRating !== '' ? parseInt(impactSelfRating) : null,
+                    notes: notes || null
+                }
+            });
+        }
 
         return res.status(200).json({
             success: true,
-            message: 'Bad habit created successfully',
+            message: existingHabit ? 'Bad habit updated successfully' : 'Bad habit created successfully',
             data: habit
         });
     } catch (error) {
@@ -260,40 +296,11 @@ router.post('/badhabit', async (req, res) => {
     }
 });
 
-router.get('/badhabit/:id', async (req, res) => {
+router.get('/badhabit/:email', async (req, res) => {
     try {
-        const id = parseInt(req.params.id);
-
-        const habit = await prisma.badHabit.findUnique({
-            where: { id }
-        });
-
-        if (!habit) {
-            return res.status(404).json({
-                success: false,
-                message: 'Bad habit not found'
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            data: habit
-        });
-    } catch (error) {
-        console.error('Error fetching bad habit:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to fetch bad habit',
-            error: error.message
-        });
-    }
-});
-
-router.get('/badhabit/user/:clerkId', async (req, res) => {
-    try {
-        const clerkId = parseInt(req.params.clerkId);
+        const email = req.params.email;
         const user = await prisma.user.findUnique({
-            where: { clerkId: clerkId }
+            where: { email: String(email) }
         });
         if (!user) {
             return res.status(404).json({
@@ -301,15 +308,14 @@ router.get('/badhabit/user/:clerkId', async (req, res) => {
                 message: 'User not found'
             });
         }
-        const userId = user ? user.id : null;
 
-        const habits = await prisma.badHabit.findMany({
-            where: { userId }
+        const habit = await prisma.badHabit.findFirst({
+            where: { userId: user.id }
         });
 
         return res.status(200).json({
             success: true,
-            data: habits
+            data: habit || null
         });
     } catch (error) {
         console.error('Error fetching user bad habits:', error);
@@ -321,46 +327,11 @@ router.get('/badhabit/user/:clerkId', async (req, res) => {
     }
 });
 
-router.delete('/badhabit/:id', async (req, res) => {
-    try {
-        const id = parseInt(req.params.id);
-
-        const existingHabit = await prisma.badHabit.findUnique({
-            where: { id }
-        });
-
-        if (!existingHabit) {
-            return res.status(404).json({
-                success: false,
-                message: 'Bad habit not found'
-            });
-        }
-
-        await prisma.badHabit.delete({
-            where: { id }
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: 'Bad habit deleted successfully'
-        });
-    } catch (error) {
-        console.error('Error deleting bad habit:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to delete bad habit',
-            error: error.message
-        });
-    }
-});
-
-
-
 // Sleep Pattern Routes
 router.post('/sleeppattern', async (req, res) => {
     try {
         const {
-            clerkId,
+            email,
             averageHours,
             sleepQuality,
             bedTime,
@@ -372,17 +343,21 @@ router.post('/sleeppattern', async (req, res) => {
         } = req.body;
 
         // Validate required field
-        if (!clerkId) {
-            return res.status(400).json({ error: 'clerkId is required' });
+        if (!email) {
+            return res.status(400).json({ error: 'email is required' });
         }
 
-        // Fetch user by clerkId
+        // Fetch user by email
+        console.log('SleepPattern: Looking for user with email:', email, 'Type:', typeof email);
+
         const user = await prisma.user.findUnique({
-            where: { clerkId }
+            where: { email: String(email) }
         });
 
+        console.log('SleepPattern: Found user:', user);
+
         if (!user) {
-            return res.status(404).json({ error: 'User not found with given clerkId' });
+            return res.status(404).json({ error: 'User not found with given email' });
         }
 
         let sleepPattern;
@@ -439,41 +414,11 @@ router.post('/sleeppattern', async (req, res) => {
     }
 });
 
-
-router.get('/sleeppattern/:id', async (req, res) => {
+router.get('/sleeppattern/:email', async (req, res) => {
     try {
-        const id = parseInt(req.params.id);
-
-        const sleepPattern = await prisma.sleepPattern.findUnique({
-            where: { id }
-        });
-
-        if (!sleepPattern) {
-            return res.status(404).json({
-                success: false,
-                message: 'Sleep pattern not found'
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            data: sleepPattern
-        });
-    } catch (error) {
-        console.error('Error fetching sleep pattern:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to fetch sleep pattern',
-            error: error.message
-        });
-    }
-});
-
-router.get('/sleeppattern/user/:clerkId', async (req, res) => {
-    try {
-        const clerkId = parseInt(req.params.clerkId);
+        const email = req.params.email;
         const user = await prisma.user.findUnique({
-            where: { clerkId: clerkId }
+            where: { email: String(email) }
         });
         if (!user) {
             return res.status(404).json({
@@ -481,15 +426,14 @@ router.get('/sleeppattern/user/:clerkId', async (req, res) => {
                 message: 'User not found'
             });
         }
-        const userId = user ? user.id : null;
 
-        const sleepPatterns = await prisma.sleepPattern.findMany({
-            where: { userId }
+        const sleepPattern = await prisma.sleepPattern.findUnique({
+            where: { userId: user.id }
         });
 
         return res.status(200).json({
             success: true,
-            data: sleepPatterns
+            data: sleepPattern || null
         });
     } catch (error) {
         console.error('Error fetching user sleep patterns:', error);
@@ -501,43 +445,10 @@ router.get('/sleeppattern/user/:clerkId', async (req, res) => {
     }
 });
 
-router.delete('/sleeppattern/:id', async (req, res) => {
-    try {
-        const id = parseInt(req.params.id);
-
-        const existingPattern = await prisma.sleepPattern.findUnique({
-            where: { id }
-        });
-
-        if (!existingPattern) {
-            return res.status(404).json({
-                success: false,
-                message: 'Sleep pattern not found'
-            });
-        }
-
-        await prisma.sleepPattern.delete({
-            where: { id }
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: 'Sleep pattern deleted successfully'
-        });
-    } catch (error) {
-        console.error('Error deleting sleep pattern:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to delete sleep pattern',
-            error: error.message
-        });
-    }
-});
-
 router.post('/stresssource', async (req, res) => {
     try {
         const {
-            clerkId,
+            email,
             stressType,
             stressLevel,
             copingMechanisms,
@@ -545,21 +456,25 @@ router.post('/stresssource', async (req, res) => {
             physicalSymptoms
         } = req.body;
 
-        if (!clerkId) {
-            return res.status(400).json({ error: 'clerkId is required' });
+        if (!email) {
+            return res.status(400).json({ error: 'email is required' });
         }
 
         if (!stressType || !stressFrequency) {
             return res.status(400).json({ error: 'stressType and stressFrequency are required' });
         }
 
-        // Find user by clerkId
+        // Find user by email
+        console.log('StressSource: Looking for user with email:', email, 'Type:', typeof email);
+
         const user = await prisma.user.findUnique({
-            where: { clerkId }
+            where: { email: String(email) }
         });
 
+        console.log('StressSource: Found user:', user);
+
         if (!user) {
-            return res.status(404).json({ error: 'User not found with given clerkId' });
+            return res.status(404).json({ error: 'User not found with given email' });
         }
 
         // Check if stress source already exists
@@ -610,17 +525,26 @@ router.post('/stresssource', async (req, res) => {
     }
 });
 
-router.get('/stresssource/user/:userId', async (req, res) => {
+router.get('/stresssource/:email', async (req, res) => {
     try {
-        const userId = parseInt(req.params.userId);
+        const email = req.params.email;
+        const user = await prisma.user.findUnique({
+            where: { email: String(email) }
+        });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
 
-        const stressSources = await prisma.stressSource.findMany({
-            where: { userId }
+        const stressSource = await prisma.stressSource.findFirst({
+            where: { userId: user.id }
         });
 
         return res.status(200).json({
             success: true,
-            data: stressSources
+            data: stressSource || null
         });
     } catch (error) {
         console.error('Error fetching user stress sources:', error);
@@ -632,44 +556,11 @@ router.get('/stresssource/user/:userId', async (req, res) => {
     }
 });
 
-router.delete('/stresssource/:id', async (req, res) => {
-    try {
-        const id = parseInt(req.params.id);
-
-        const existingSource = await prisma.stressSource.findUnique({
-            where: { id }
-        });
-
-        if (!existingSource) {
-            return res.status(404).json({
-                success: false,
-                message: 'Stress source not found'
-            });
-        }
-
-        await prisma.stressSource.delete({
-            where: { id }
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: 'Stress source deleted successfully'
-        });
-    } catch (error) {
-        console.error('Error deleting stress source:', error);
-        return res.status(500).json({
-            success: false,
-            message: 'Failed to delete stress source',
-            error: error.message
-        });
-    }
-});
-
 // Mental Health Routes
 router.post('/mentalhealth', async (req, res) => {
     try {
         const {
-            clerkId,
+            email,
             moodPatterns,
             diagnosedIssues,
             therapyHistory,
@@ -677,18 +568,22 @@ router.post('/mentalhealth', async (req, res) => {
             lastEvaluation
         } = req.body;
 
-        // Validate required clerkId
-        if (!clerkId) {
-            return res.status(400).json({ error: 'clerkId is required' });
+        // Validate required email
+        if (!email) {
+            return res.status(400).json({ error: 'email is required' });
         }
 
-        // Find user by clerkId
+        // Find user by email
+        console.log('MentalHealth: Looking for user with email:', email, 'Type:', typeof email);
+
         const user = await prisma.user.findUnique({
-            where: { clerkId }
+            where: { email: String(email) }
         });
 
+        console.log('MentalHealth: Found user:', user);
+
         if (!user) {
-            return res.status(404).json({ error: 'User not found with given clerkId' });
+            return res.status(404).json({ error: 'User not found with given email' });
         }
 
         // Format date
@@ -729,11 +624,11 @@ router.post('/mentalhealth', async (req, res) => {
 });
 
 
-router.get('/mentalhealth/:clerkId', async (req, res) => {
+router.get('/mentalhealth/:email', async (req, res) => {
     try {
-        const clerkId = parseInt(req.params.clerkId);
+        const email = req.params.email;
         const user = await prisma.user.findUnique({
-            where: { clerkId: clerkId }
+            where: { email: String(email) }
         });
         if (!user) {
             return res.status(404).json({
@@ -741,22 +636,14 @@ router.get('/mentalhealth/:clerkId', async (req, res) => {
                 message: 'User not found'
             });
         }
-        const userId = user ? user.id : null;
 
         const mentalHealth = await prisma.mentalHealth.findUnique({
-            where: { userId }
+            where: { userId: user.id }
         });
-
-        if (!mentalHealth) {
-            return res.status(404).json({
-                success: false,
-                message: 'Mental health profile not found'
-            });
-        }
 
         return res.status(200).json({
             success: true,
-            data: mentalHealth
+            data: mentalHealth || null
         });
     } catch (error) {
         console.error('Error fetching mental health profile:', error);
@@ -768,11 +655,11 @@ router.get('/mentalhealth/:clerkId', async (req, res) => {
     }
 });
 
-router.delete('/mentalhealth/:clerkId', async (req, res) => {
+router.delete('/mentalhealth/:email', async (req, res) => {
     try {
-        const clerkId = parseInt(req.params.clerkId);
+        const email = req.params.email;
         const user = await prisma.user.findUnique({
-            where: { clerkId: clerkId }
+            where: { email: String(email) }
         });
         if (!user) {
             return res.status(404).json({
@@ -780,10 +667,9 @@ router.delete('/mentalhealth/:clerkId', async (req, res) => {
                 message: 'User not found'
             });
         }
-        const userId = user ? user.id : null;
 
         const existingProfile = await prisma.mentalHealth.findUnique({
-            where: { userId }
+            where: { userId: user.id }
         });
 
         if (!existingProfile) {
@@ -794,7 +680,7 @@ router.delete('/mentalhealth/:clerkId', async (req, res) => {
         }
 
         await prisma.mentalHealth.delete({
-            where: { userId }
+            where: { userId: user.id }
         });
 
         return res.status(200).json({
@@ -806,6 +692,31 @@ router.delete('/mentalhealth/:clerkId', async (req, res) => {
         return res.status(500).json({
             success: false,
             message: 'Failed to delete mental health profile',
+            error: error.message
+        });
+    }
+});
+
+// Debug route to check users
+router.get('/debug/users', async (req, res) => {
+    try {
+        const users = await prisma.user.findMany({
+            select: {
+                id: true,
+                clerkId: true,
+                name: true,
+                email: true
+            }
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: users,
+            count: users.length
+        });
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
             error: error.message
         });
     }

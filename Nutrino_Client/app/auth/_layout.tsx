@@ -1,13 +1,13 @@
 import { useAuth, useUser } from "@clerk/clerk-expo";
-import { Redirect, router, Stack, usePathname } from "expo-router";
-import { useEffect, useState } from "react";
 import axios from 'axios';
+import { Redirect, Stack, usePathname } from "expo-router";
+import { useEffect, useState } from "react";
 
 const API_BASE_URL = 'https://nutrinov2.onrender.com/api/v1';
 
 export const createSubscriptionOrder = async (email, planId) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/subscription/create-order`, {
+    const response = await axios.post(`${API_BASE_URL}/subscriptions/create-order`, {
       email,
       planId
     });
@@ -42,7 +42,7 @@ export default function AuthLayout() {
   const { user } = useUser();
   const pathName = usePathname();
   const { isSignedIn } = useAuth();
-  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -66,6 +66,8 @@ export default function AuthLayout() {
     }
   }, [isSignedIn, user]);
 
+
+
   // Show loading while checking subscription
   if (isLoading) {
     return null; // or a loading component
@@ -73,17 +75,16 @@ export default function AuthLayout() {
 
   // If user is signed in but onboarding is not completed, redirect to tabs
   if (isSignedIn && user?.unsafeMetadata?.onboarding_completed !== true) {
-    router.push("/(tabs)");
-    return null;
+    return <Redirect href="/(tabs)" />;
   }
 
   // If user is signed in and onboarding is completed
   if (isSignedIn && user?.unsafeMetadata?.onboarding_completed === true) {
     // Check subscription status
-    if (subscriptionStatus?.isActive || subscriptionStatus?.status === 'active') {
+    if (subscriptionStatus && (subscriptionStatus.isActive || subscriptionStatus.status === 'active')) {
       // User has active subscription, redirect to main tabs
       return <Redirect href="/(tabs)" />;
-    } else {
+    } else if (subscriptionStatus !== null) {
       // User doesn't have active subscription, redirect to subscription page
       return <Redirect href="/(tabs)/subscription" />;
     }
