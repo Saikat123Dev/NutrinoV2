@@ -184,7 +184,7 @@ router.get('/user/:email', async (req, res) => {
      if(!user) {
       return res.status(404).json({ error: 'User not found' });
      }
-    const userId = user.id;
+    const userId = user
 
     // Find active subscription
     const subscription = await prisma.subscription.findFirst({
