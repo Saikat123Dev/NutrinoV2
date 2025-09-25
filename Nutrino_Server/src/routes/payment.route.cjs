@@ -180,6 +180,7 @@ router.get('/user/:email', async (req, res) => {
       where: { email },
       select: { id: true }
     });
+    console.log(user)
      if(!user) {
       return res.status(404).json({ error: 'User not found' });
      }
@@ -196,6 +197,7 @@ router.get('/user/:email', async (req, res) => {
         createdAt: 'desc'
       }
     });
+    console.log(subscription)
      const subscriptionId = subscription ? subscription.planId : null;
     if (!subscription) {
       return res.status(404).json({ 
