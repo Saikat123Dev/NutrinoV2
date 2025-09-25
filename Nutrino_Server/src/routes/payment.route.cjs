@@ -171,7 +171,6 @@ router.post('/verify', async (req, res) => {
   }
 });
 
-// Get user's active subscription
 router.get('/user/:email', async (req, res) => {
   try {
     const email = req.params.email;
@@ -189,17 +188,11 @@ router.get('/user/:email', async (req, res) => {
       }
     });
 
-    if (!subscription) {
-      return res.status(404).json({
-        message: 'No active subscription found',
-        hasActiveSubscription: false
-      });
-    }
-
+    // Always return 200 with a flag
     res.json({
-      hasActiveSubscription: true,
-      subscription,
-      subscriptionId: subscription.planId
+      hasActiveSubscription: !!subscription, // true if subscription exists, false otherwise
+      subscription: subscription || null,
+      subscriptionId: subscription ? subscription.planId : null
     });
 
   } catch (error) {
@@ -207,6 +200,7 @@ router.get('/user/:email', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch user subscription' });
   }
 });
+
 
 // Add this endpoint to your existing subscription routes
 router.post('/status', async (req, res) => {
