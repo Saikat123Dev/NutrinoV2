@@ -175,23 +175,31 @@ router.post('/verify', async (req, res) => {
 router.get('/user/:email', async (req, res) => {
   try {
     const email = req.params.email;
-     console.log('Fetching subscription for email:', email);
-    const subscription = await prisma.subscription.findFirst({
-  where: {
-    user: { email },  // ✅ filter via relation
-    isActive: true,
-    endDate: { gt: new Date() }
-  },
-  orderBy: {
-    createdAt: 'desc'
-  }
-});
+    console.log('Fetching subscription for email:', email);
 
+    // Find latest active subscription via user relation
+    const subscription = await prisma.subscription.findFirst({
+      where: {
+        user: { email },       // ✅ filter via relation
+        isActive: true,
+        endDate: { gt: new Date() }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    if (!subscription) {
+      return res.status(404).json({
+        message: 'No active subscription found',
+        hasActiveSubscription: false
+      });
+    }
 
     res.json({
       hasActiveSubscription: true,
-      subscription: subscription,
-      subscriptionId: subscriptionId
+      subscription,
+      subscriptionId: subscription.planId
     });
 
   } catch (error) {
